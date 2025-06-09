@@ -14,10 +14,15 @@ import {
   Clock, 
   Home,
   Save,
-  AlertCircle
+  AlertCircle,
+  Code,
+  Download,
+  FileDown
 } from 'lucide-react';
 import { formatTimestamp } from '@/lib/utils';
 import toast, { Toaster } from 'react-hot-toast';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 export default function NotePage() {
   const params = useParams();
@@ -28,10 +33,11 @@ export default function NotePage() {
   const [title, setTitle] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);  const [user, setUser] = useState<User | null>(null);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [isOnline, setIsOnline] = useState(true);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);  const [isOnline, setIsOnline] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false); // Track if note has been loaded from Firestore
+  const [isCodeView, setIsCodeView] = useState(false); // Track code formatting view
+  const [codeLanguage, setCodeLanguage] = useState('javascript'); // Default code language
   
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -139,8 +145,7 @@ export default function NotePage() {
       console.log('Cleaning up note listener');
       unsubscribe();
     };
-  }, [noteId, user]); // Removed content and title from dependencies
-  // Monitor online status
+  }, [noteId, user]); // Removed content and title from dependencies  // Monitor online status
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -152,7 +157,26 @@ export default function NotePage() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, []);  // Save before component unmounts or page unloads
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + Shift + C to toggle code view
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
+        e.preventDefault();
+        toggleCodeView();
+      }
+      // Ctrl/Cmd + Shift + S to manual save
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
+        e.preventDefault();
+        manualSave();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCodeView]);// Save before component unmounts or page unloads
   useEffect(() => {
     // Define the save function inside this effect to avoid dependency issues
     const saveBeforeUnload = (unloadContent: string, unloadTitle: string) => {
@@ -354,13 +378,95 @@ export default function NotePage() {
       console.error('Failed to copy link:', err);
       toast.error('Failed to copy link');
     }
-  };
-  const manualSave = () => {
+  };  const manualSave = () => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
     saveNote(content, title, true); // Show toast for manual saves
-  };  if (isLoading) {
+  };
+
+  const toggleCodeView = () => {
+    setIsCodeView(!isCodeView);
+    toast.success(isCodeView ? 'Switched to plain text view' : 'Switched to code view');
+  };
+
+  const handleLanguageChange = (language: string) => {
+    setCodeLanguage(language);
+    toast.success(`Code language set to ${language}`);
+  };
+  const downloadNote = (format: 'txt' | 'md' | 'json') => {
+    const noteData = {
+      id: noteId,
+      title: title,
+      content: content,
+      createdAt: note?.createdAt || new Date(),
+      updatedAt: note?.updatedAt || new Date(),
+      collaborators: note?.collaborators || []
+    };
+
+    let fileContent = '';
+    let fileName = '';
+    let mimeType = '';
+
+    switch (format) {
+      case 'txt':
+        fileContent = `${title}\n${'='.repeat(title.length)}\n\n${content}`;
+        fileName = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
+        mimeType = 'text/plain';
+        break;
+      case 'md':
+        fileContent = `# ${title}\n\n${content}`;
+        fileName = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
+        mimeType = 'text/markdown';
+        break;
+      case 'json':
+        fileContent = JSON.stringify(noteData, null, 2);
+        fileName = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
+        mimeType = 'application/json';
+        break;
+    }
+
+    const blob = new Blob([fileContent], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success(`Note downloaded as ${format.toUpperCase()}`);
+  };
+
+  const copyFormattedContent = async (format: 'md' | 'json') => {
+    let formattedContent = '';
+    
+    switch (format) {
+      case 'md':
+        formattedContent = `# ${title}\n\n${content}`;
+        break;
+      case 'json':
+        const noteData = {
+          id: noteId,
+          title: title,
+          content: content,
+          createdAt: note?.createdAt || new Date(),
+          updatedAt: note?.updatedAt || new Date(),
+          collaborators: note?.collaborators || []
+        };
+        formattedContent = JSON.stringify(noteData, null, 2);
+        break;
+    }
+
+    try {
+      await navigator.clipboard.writeText(formattedContent);
+      toast.success(`${format.toUpperCase()} content copied to clipboard!`);
+    } catch (err) {
+      console.error('Failed to copy formatted content:', err);
+      toast.error('Failed to copy content');
+    }
+  };if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -452,21 +558,85 @@ export default function NotePage() {
                   </div>
                 )}
               </div>              {/* Action buttons */}
-              <button
-                onClick={manualSave}
-                disabled={isSaving}
-                className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
-              >
-                Save
-              </button>
-              
-              <button
-                onClick={copyToClipboard}
-                className="flex items-center space-x-1 px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
-              >
-                <Copy className="h-4 w-4" />
-                <span className="hidden sm:inline">Share</span>
-              </button>              {/* Debug info - remove in production */}
+              <div className="flex items-center space-x-2">
+                {/* Code formatting toggle */}
+                <button
+                  onClick={toggleCodeView}
+                  className={`flex items-center space-x-1 px-3 py-1 text-sm rounded transition-colors ${
+                    isCodeView 
+                      ? 'bg-purple-600 text-white hover:bg-purple-700' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <Code className="h-4 w-4" />
+                  <span className="hidden sm:inline">{isCodeView ? 'Plain' : 'Code'}</span>
+                </button>
+
+                {/* Download dropdown */}
+                <div className="relative group">
+                  <button className="flex items-center space-x-1 px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
+                    <Download className="h-4 w-4" />
+                    <span className="hidden sm:inline">Download</span>
+                  </button>
+                    {/* Dropdown menu */}
+                  <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                    <div className="px-3 py-2 text-xs font-semibold text-gray-500 border-b">Download</div>
+                    <button
+                      onClick={() => downloadNote('txt')}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                    >
+                      <FileDown className="h-3 w-3" />
+                      <span>Text (.txt)</span>
+                    </button>
+                    <button
+                      onClick={() => downloadNote('md')}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                    >
+                      <FileDown className="h-3 w-3" />
+                      <span>Markdown (.md)</span>
+                    </button>
+                    <button
+                      onClick={() => downloadNote('json')}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                    >
+                      <FileDown className="h-3 w-3" />
+                      <span>JSON (.json)</span>
+                    </button>
+                    
+                    <div className="px-3 py-2 text-xs font-semibold text-gray-500 border-t border-b">Copy to Clipboard</div>
+                    <button
+                      onClick={() => copyFormattedContent('md')}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                    >
+                      <Copy className="h-3 w-3" />
+                      <span>Markdown format</span>
+                    </button>
+                    <button
+                      onClick={() => copyFormattedContent('json')}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                    >
+                      <Copy className="h-3 w-3" />
+                      <span>JSON format</span>
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  onClick={manualSave}
+                  disabled={isSaving}
+                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                >
+                  Save
+                </button>
+                
+                <button
+                  onClick={copyToClipboard}
+                  className="flex items-center space-x-1 px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                >
+                  <Copy className="h-4 w-4" />
+                  <span className="hidden sm:inline">Share</span>
+                </button>
+              </div>{/* Debug info - remove in production */}
               {process.env.NODE_ENV === 'development' && (
                 <>
                   <button
@@ -515,24 +685,93 @@ export default function NotePage() {
               placeholder="Enter note title..."
               className="w-full text-2xl font-bold text-gray-900 placeholder-gray-400 border-none outline-none bg-transparent"
             />
-          </div>
-
-          {/* Content area */}
+          </div>          {/* Content area */}
           <div className="p-4">
-            <textarea
-              ref={contentRef}
-              value={content}
-              onChange={handleContentChange}
-              onBlur={handleBlurSave}
-              placeholder="Start typing your note here... Anyone with this link can edit this note in real-time!"
-              className="w-full h-96 text-gray-700 placeholder-gray-400 border-none outline-none resize-none bg-transparent leading-relaxed"
-              style={{ minHeight: '500px' }}
-            />
-          </div>
-        </div>
+            {isCodeView ? (
+              <div className="space-y-4">
+                {/* Language selector for code view */}
+                <div className="flex items-center space-x-2 mb-4">
+                  <label className="text-sm font-medium text-gray-700">Language:</label>
+                  <select
+                    value={codeLanguage}
+                    onChange={(e) => handleLanguageChange(e.target.value)}
+                    className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="javascript">JavaScript</option>
+                    <option value="typescript">TypeScript</option>
+                    <option value="python">Python</option>
+                    <option value="java">Java</option>
+                    <option value="cpp">C++</option>
+                    <option value="csharp">C#</option>
+                    <option value="php">PHP</option>
+                    <option value="ruby">Ruby</option>
+                    <option value="go">Go</option>
+                    <option value="rust">Rust</option>
+                    <option value="html">HTML</option>
+                    <option value="css">CSS</option>
+                    <option value="sql">SQL</option>
+                    <option value="json">JSON</option>
+                    <option value="xml">XML</option>
+                    <option value="yaml">YAML</option>
+                    <option value="markdown">Markdown</option>
+                    <option value="bash">Bash</option>
+                    <option value="powershell">PowerShell</option>
+                    <option value="dockerfile">Dockerfile</option>
+                  </select>
+                </div>
 
-        {/* Info section */}
-        <div className="mt-6 grid sm:grid-cols-2 gap-4">
+                {/* Code editor and preview side by side */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Code input */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Edit Code:</label>
+                    <textarea
+                      value={content}
+                      onChange={handleContentChange}
+                      onBlur={handleBlurSave}
+                      placeholder={`Start typing your ${codeLanguage} code here...`}
+                      className="w-full h-96 p-3 text-sm font-mono text-gray-700 placeholder-gray-400 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      style={{ minHeight: '400px' }}
+                    />
+                  </div>
+
+                  {/* Code preview */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Preview:</label>
+                    <div className="border border-gray-300 rounded overflow-hidden" style={{ minHeight: '400px' }}>
+                      <SyntaxHighlighter
+                        language={codeLanguage}
+                        style={tomorrow}
+                        customStyle={{
+                          margin: 0,
+                          padding: '12px',
+                          fontSize: '14px',
+                          minHeight: '400px',
+                          height: '100%'
+                        }}
+                        wrapLines={true}
+                        wrapLongLines={true}
+                      >
+                        {content || `// Start typing your ${codeLanguage} code...`}
+                      </SyntaxHighlighter>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <textarea
+                ref={contentRef}
+                value={content}
+                onChange={handleContentChange}
+                onBlur={handleBlurSave}
+                placeholder="Start typing your note here... Anyone with this link can edit this note in real-time!"
+                className="w-full h-96 text-gray-700 placeholder-gray-400 border-none outline-none resize-none bg-transparent leading-relaxed"
+                style={{ minHeight: '500px' }}
+              />
+            )}
+          </div>
+        </div>        {/* Info section */}
+        <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <Share2 className="h-5 w-5 text-blue-600" />
@@ -562,6 +801,28 @@ export default function NotePage() {
               {note?.collaborators?.length || 0} people have edited this note.
               Changes are saved automatically when you stop typing or click away.
             </p>
+          </div>          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Code className="h-5 w-5 text-purple-600" />
+              <h3 className="font-semibold text-purple-900">Code Features</h3>
+            </div>
+            <p className="text-purple-700 text-sm mb-2">
+              Toggle between plain text and code view with syntax highlighting.
+            </p>
+            <div className="space-y-1 text-xs text-purple-600">
+              <div className="flex items-center space-x-2">
+                <Download className="h-3 w-3" />
+                <span>Download as TXT, MD, or JSON</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Code className="h-3 w-3" />
+                <span>Ctrl+Shift+C: Toggle code view</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Save className="h-3 w-3" />
+                <span>Ctrl+Shift+S: Manual save</span>
+              </div>
+            </div>
           </div>
         </div>
       </main>
