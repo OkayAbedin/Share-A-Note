@@ -696,7 +696,7 @@ export default function NotePage() {
       <main className="container mx-auto px-4 py-6 max-w-4xl">
         <div className="bg-white rounded-lg shadow-sm border">          {/* Title input */}
           <div className="border-b p-4">
-            <div className="flex items-center justify-between gap-4">              {/* Title input - left side */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">              {/* Title input */}
               <input
                 ref={titleRef}
                 type="text"
@@ -704,15 +704,15 @@ export default function NotePage() {
                 onChange={handleTitleChange}
                 onBlur={handleBlurSave}
                 placeholder="Enter note title..."
-                className="flex-1 text-lg sm:text-2xl font-bold text-gray-900 placeholder-gray-400 border-none outline-none bg-transparent"
+                className="w-full sm:flex-1 text-lg sm:text-2xl font-bold text-gray-900 placeholder-gray-400 border-none outline-none bg-transparent"
               />
               
-              {/* Code/Plain toggle and language selector - right side */}
-              <div className="flex items-center space-x-3">
+              {/* Code/Plain toggle and language selector */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                 {/* Code formatting toggle */}
                 <button
                   onClick={toggleCodeView}
-                  className={`flex items-center space-x-2 px-4 py-2 text-sm rounded-lg font-medium transition-colors ${
+                  className={`flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 text-sm rounded-lg font-medium transition-colors ${
                     isCodeView 
                       ? 'bg-purple-600 text-white hover:bg-purple-700' 
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -727,7 +727,7 @@ export default function NotePage() {
                   <select
                     value={codeLanguage}
                     onChange={(e) => handleLanguageChange(e.target.value)}
-                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-gray-700 min-w-32"
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-gray-700 w-full sm:min-w-32 sm:w-auto"
                   >
                     <option value="javascript" className="text-gray-900 bg-white">JavaScript</option>
                     <option value="typescript" className="text-gray-900 bg-white">TypeScript</option>
