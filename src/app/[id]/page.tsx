@@ -696,8 +696,7 @@ export default function NotePage() {
       <main className="container mx-auto px-4 py-6 max-w-4xl">
         <div className="bg-white rounded-lg shadow-sm border">          {/* Title input */}
           <div className="border-b p-4">
-            <div className="flex items-center justify-between gap-4">
-              {/* Title input - left side */}
+            <div className="flex items-center justify-between gap-4">              {/* Title input - left side */}
               <input
                 ref={titleRef}
                 type="text"
@@ -705,7 +704,7 @@ export default function NotePage() {
                 onChange={handleTitleChange}
                 onBlur={handleBlurSave}
                 placeholder="Enter note title..."
-                className="flex-1 text-2xl font-bold text-gray-900 placeholder-gray-400 border-none outline-none bg-transparent"
+                className="flex-1 text-lg sm:text-2xl font-bold text-gray-900 placeholder-gray-400 border-none outline-none bg-transparent"
               />
               
               {/* Code/Plain toggle and language selector - right side */}

@@ -114,7 +114,15 @@ export default function Home() {
         <div className="container mx-auto px-4 py-8">
           <div className="text-center text-gray-600">
             <p className="text-sm">
-              Made with <span className="text-red-500">❤️</span> for seamless note sharing
+              Made with <span className="text-red-500">❤️</span> by{' '}
+              <a 
+                href="https://minhazabedin.vercel.app" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                Minhaz
+              </a>
             </p>
             {process.env.NODE_ENV === 'development' && (
               <div className="mt-4">
