@@ -12,7 +12,6 @@ import {
   Copy, 
   Users, 
   Clock, 
-  Home,
   Save,
   AlertCircle,
   Code,
@@ -579,17 +578,8 @@ export default function NotePage() {
       
       {/* Header */}
       <header className="bg-white border-b shadow-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
+        <div className="container mx-auto px-4 py-3">          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <button
-                onClick={() => router.push('/')}
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <Home className="h-5 w-5" />
-                <span className="hidden sm:inline">Home</span>
-              </button>
-              
               <div className="flex items-center space-x-2">
                 <FileText className="h-6 w-6 text-blue-600" />
                 <span className="text-lg font-semibold text-gray-900">
@@ -695,39 +685,8 @@ export default function NotePage() {
                   className="flex items-center space-x-1 px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
                 >
                   <Copy className="h-4 w-4" />
-                  <span className="hidden sm:inline">Share</span>
-                </button>
-              </div>{/* Debug info - remove in production */}
-              {process.env.NODE_ENV === 'development' && (
-                <>
-                  <button
-                    onClick={() => {
-                      console.log('Debug Info:', {
-                        user: user?.uid,
-                        noteId,
-                        note,
-                        content,
-                        title,
-                        isLoading,
-                        hasError
-                      });
-                      toast.success('Debug info logged to console');
-                    }}
-                    className="px-2 py-1 text-xs bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
-                  >
-                    Debug
-                  </button>
-                  <button
-                    onClick={() => {
-                      console.log('Force saving current content...');
-                      saveNote(content, title, true);
-                    }}
-                    className="px-2 py-1 text-xs bg-orange-600 text-white rounded hover:bg-orange-700 transition-colors"
-                  >
-                    Force Save
-                  </button>
-                </>
-              )}
+                  <span className="hidden sm:inline">Share</span>                </button>
+              </div>
             </div>
           </div>
         </div>
