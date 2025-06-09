@@ -8,8 +8,8 @@ export function cn(...inputs: ClassValue[]) {
 // Generate a random note ID
 export function generateNoteId(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let result = 'noteno';
-  for (let i = 0; i < 6; i++) {
+  let result = '';
+  for (let i = 0; i < 8; i++) {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return result;
