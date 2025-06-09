@@ -624,55 +624,13 @@ export default function NotePage() {
                   </div>
                 )}
               </div>              {/* Action buttons */}
-              <div className="flex items-center space-x-2">                {/* Code formatting toggle */}
-                <button
-                  onClick={toggleCodeView}
-                  className={`flex items-center space-x-1 px-3 py-1 text-sm rounded transition-colors ${
-                    isCodeView 
-                      ? 'bg-purple-600 text-white hover:bg-purple-700' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  <Code className="h-4 w-4" />
-                  <span className="hidden sm:inline">{isCodeView ? 'Plain' : 'Code'}</span>
-                </button>
-
-                {/* Language selector - only show in code view */}
-                {isCodeView && (
-                  <select
-                    value={codeLanguage}
-                    onChange={(e) => handleLanguageChange(e.target.value)}
-                    className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-                  >
-                    <option value="javascript">JavaScript</option>
-                    <option value="typescript">TypeScript</option>
-                    <option value="python">Python</option>
-                    <option value="java">Java</option>
-                    <option value="cpp">C++</option>
-                    <option value="csharp">C#</option>
-                    <option value="php">PHP</option>
-                    <option value="ruby">Ruby</option>
-                    <option value="go">Go</option>
-                    <option value="rust">Rust</option>
-                    <option value="html">HTML</option>
-                    <option value="css">CSS</option>
-                    <option value="sql">SQL</option>
-                    <option value="json">JSON</option>
-                    <option value="xml">XML</option>
-                    <option value="yaml">YAML</option>
-                    <option value="markdown">Markdown</option>
-                    <option value="bash">Bash</option>
-                    <option value="powershell">PowerShell</option>
-                    <option value="dockerfile">Dockerfile</option>
-                  </select>
-                )}
-
+              <div className="flex items-center space-x-2">
                 {/* Download dropdown */}
                 <div className="relative group">
                   <button className="flex items-center space-x-1 px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
                     <Download className="h-4 w-4" />
                     <span className="hidden sm:inline">Download</span>
-                  </button>                  {/* Dropdown menu */}
+                  </button>{/* Dropdown menu */}
                   <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
                     <div className="px-3 py-2 text-xs font-semibold text-gray-500 border-b">Download</div>
                     <button
