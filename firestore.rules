@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read/write access to notes for authenticated users (including anonymous)
+    match /notes/{noteId} {
+      // Simple rule: any authenticated user can read and write any note
+      allow read, write: if request.auth != null;
+    }
+  }
+}
