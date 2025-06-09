@@ -148,10 +148,9 @@ export default function NotePage() {
           setNote(noteData);
             // Always update the state with the latest data from Firestore on initial load
           // After initialization, only update if content is significantly different (to avoid cursor jumping)
-          if (!isInitialized) {
-            console.log('📥 Initial load - setting content from Firestore');
+          if (!isInitialized) {            console.log('📥 Initial load - setting content from Firestore');
             setContent(noteData.content || '');
-            setTitle(noteData.title || 'Untitled Note');
+            setTitle(noteData.title || '');
             
             // Load code view preference and language from saved note
             if (noteData.isCodeView !== undefined) {
@@ -175,9 +174,8 @@ export default function NotePage() {
                 titleChanged,
                 newContentLength: noteData.content?.length || 0,
                 currentContentLength: content.length
-              });
-              setContent(noteData.content || '');
-              setTitle(noteData.title || 'Untitled Note');
+              });              setContent(noteData.content || '');
+              setTitle(noteData.title || '');
             }
             
             // Update code view preferences if they changed
@@ -193,10 +191,9 @@ export default function NotePage() {
           console.log('Note loaded successfully:', noteData);
         } else {
           // Note doesn't exist - just set empty state, don't auto-create
-          console.log('❌ Note does not exist in Firestore, setting empty state');
-          setNote(null);
+          console.log('❌ Note does not exist in Firestore, setting empty state');          setNote(null);
           setContent('');
-          setTitle('Untitled Note');
+          setTitle('');
           setIsInitialized(true);        }
         setIsLoading(false);
       },
