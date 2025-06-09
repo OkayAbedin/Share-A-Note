@@ -2,7 +2,8 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "devCommand": "npm run dev",
-  "installCommand": "npm install",  "env": {
+  "installCommand": "npm install",
+  "env": {
     "NEXT_PUBLIC_FIREBASE_API_KEY": "AIzaSyDij6nBDqp9HiF-IbfULxHnOalHYzTevYA",
     "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": "notekeeper-app-fee70.firebaseapp.com",
     "NEXT_PUBLIC_FIREBASE_PROJECT_ID": "notekeeper-app-fee70",
