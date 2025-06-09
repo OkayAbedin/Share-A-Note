@@ -113,6 +113,9 @@ export default function Home() {
       <footer className="border-t bg-white mt-20">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center text-gray-600">
+            <p className="text-sm">
+              Made with <span className="text-red-500">❤️</span> for seamless note sharing
+            </p>
             {process.env.NODE_ENV === 'development' && (
               <div className="mt-4">
                 <Link 
