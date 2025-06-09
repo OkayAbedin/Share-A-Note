@@ -21,8 +21,7 @@ import {
 } from 'lucide-react';
 import { formatTimestamp } from '@/lib/utils';
 import toast, { Toaster } from 'react-hot-toast';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import CodeEditor from '@uiw/react-textarea-code-editor';
 
 export default function NotePage() {
   const params = useParams();
@@ -393,8 +392,7 @@ export default function NotePage() {
   const handleLanguageChange = (language: string) => {
     setCodeLanguage(language);
     toast.success(`Code language set to ${language}`);
-  };
-  const downloadNote = (format: 'txt' | 'md' | 'json') => {
+  };  const downloadNote = (format: 'txt' | 'md' | 'json' | 'code') => {
     const noteData = {
       id: noteId,
       title: title,
@@ -415,14 +413,46 @@ export default function NotePage() {
         mimeType = 'text/plain';
         break;
       case 'md':
-        fileContent = `# ${title}\n\n${content}`;
+        fileContent = `# ${title}\n\n${isCodeView ? `\`\`\`${codeLanguage}\n${content}\n\`\`\`` : content}`;
         fileName = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.md`;
         mimeType = 'text/markdown';
         break;
       case 'json':
-        fileContent = JSON.stringify(noteData, null, 2);
+        fileContent = JSON.stringify({...noteData, language: isCodeView ? codeLanguage : 'text'}, null, 2);
         fileName = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.json`;
         mimeType = 'application/json';
+        break;
+      case 'code':
+        // Get file extension based on language
+        const getFileExtension = (lang: string) => {
+          const extensionMap: Record<string, string> = {
+            javascript: 'js',
+            typescript: 'ts',
+            python: 'py',
+            java: 'java',
+            cpp: 'cpp',
+            csharp: 'cs',
+            php: 'php',
+            ruby: 'rb',
+            go: 'go',
+            rust: 'rs',
+            html: 'html',
+            css: 'css',
+            sql: 'sql',
+            json: 'json',
+            xml: 'xml',
+            yaml: 'yaml',
+            markdown: 'md',
+            bash: 'sh',
+            powershell: 'ps1',
+            dockerfile: 'dockerfile'
+          };
+          return extensionMap[lang] || 'txt';
+        };
+        
+        fileContent = content;
+        fileName = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.${getFileExtension(codeLanguage)}`;
+        mimeType = 'text/plain';
         break;
     }
 
@@ -436,7 +466,7 @@ export default function NotePage() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     
-    toast.success(`Note downloaded as ${format.toUpperCase()}`);
+    toast.success(`Note downloaded as ${format === 'code' ? `${codeLanguage} file` : format.toUpperCase()}`);
   };
 
   const copyFormattedContent = async (format: 'md' | 'json') => {
@@ -558,8 +588,7 @@ export default function NotePage() {
                   </div>
                 )}
               </div>              {/* Action buttons */}
-              <div className="flex items-center space-x-2">
-                {/* Code formatting toggle */}
+              <div className="flex items-center space-x-2">                {/* Code formatting toggle */}
                 <button
                   onClick={toggleCodeView}
                   className={`flex items-center space-x-1 px-3 py-1 text-sm rounded transition-colors ${
@@ -572,13 +601,42 @@ export default function NotePage() {
                   <span className="hidden sm:inline">{isCodeView ? 'Plain' : 'Code'}</span>
                 </button>
 
+                {/* Language selector - only show in code view */}
+                {isCodeView && (
+                  <select
+                    value={codeLanguage}
+                    onChange={(e) => handleLanguageChange(e.target.value)}
+                    className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                  >
+                    <option value="javascript">JavaScript</option>
+                    <option value="typescript">TypeScript</option>
+                    <option value="python">Python</option>
+                    <option value="java">Java</option>
+                    <option value="cpp">C++</option>
+                    <option value="csharp">C#</option>
+                    <option value="php">PHP</option>
+                    <option value="ruby">Ruby</option>
+                    <option value="go">Go</option>
+                    <option value="rust">Rust</option>
+                    <option value="html">HTML</option>
+                    <option value="css">CSS</option>
+                    <option value="sql">SQL</option>
+                    <option value="json">JSON</option>
+                    <option value="xml">XML</option>
+                    <option value="yaml">YAML</option>
+                    <option value="markdown">Markdown</option>
+                    <option value="bash">Bash</option>
+                    <option value="powershell">PowerShell</option>
+                    <option value="dockerfile">Dockerfile</option>
+                  </select>
+                )}
+
                 {/* Download dropdown */}
                 <div className="relative group">
                   <button className="flex items-center space-x-1 px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
                     <Download className="h-4 w-4" />
                     <span className="hidden sm:inline">Download</span>
-                  </button>
-                    {/* Dropdown menu */}
+                  </button>                  {/* Dropdown menu */}
                   <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
                     <div className="px-3 py-2 text-xs font-semibold text-gray-500 border-b">Download</div>
                     <button
@@ -595,6 +653,15 @@ export default function NotePage() {
                       <FileDown className="h-3 w-3" />
                       <span>Markdown (.md)</span>
                     </button>
+                    {isCodeView && (
+                      <button
+                        onClick={() => downloadNote('code')}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                      >
+                        <Code className="h-3 w-3" />
+                        <span>{codeLanguage} file</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => downloadNote('json')}
                       className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
@@ -676,87 +743,91 @@ export default function NotePage() {
       <main className="container mx-auto px-4 py-6 max-w-4xl">
         <div className="bg-white rounded-lg shadow-sm border">          {/* Title input */}
           <div className="border-b p-4">
-            <input
-              ref={titleRef}
-              type="text"
-              value={title}
-              onChange={handleTitleChange}
-              onBlur={handleBlurSave}
-              placeholder="Enter note title..."
-              className="w-full text-2xl font-bold text-gray-900 placeholder-gray-400 border-none outline-none bg-transparent"
-            />
-          </div>          {/* Content area */}
-          <div className="p-4">
-            {isCodeView ? (
-              <div className="space-y-4">
-                {/* Language selector for code view */}
-                <div className="flex items-center space-x-2 mb-4">
-                  <label className="text-sm font-medium text-gray-700">Language:</label>
+            <div className="flex items-center justify-between gap-4">
+              {/* Title input - left side */}
+              <input
+                ref={titleRef}
+                type="text"
+                value={title}
+                onChange={handleTitleChange}
+                onBlur={handleBlurSave}
+                placeholder="Enter note title..."
+                className="flex-1 text-2xl font-bold text-gray-900 placeholder-gray-400 border-none outline-none bg-transparent"
+              />
+              
+              {/* Code/Plain toggle and language selector - right side */}
+              <div className="flex items-center space-x-3">
+                {/* Code formatting toggle */}
+                <button
+                  onClick={toggleCodeView}
+                  className={`flex items-center space-x-2 px-4 py-2 text-sm rounded-lg font-medium transition-colors ${
+                    isCodeView 
+                      ? 'bg-purple-600 text-white hover:bg-purple-700' 
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <Code className="h-4 w-4" />
+                  <span>{isCodeView ? 'Plain Text' : 'Code View'}</span>
+                </button>
+
+                {/* Language selector - only show in code view */}
+                {isCodeView && (
                   <select
                     value={codeLanguage}
                     onChange={(e) => handleLanguageChange(e.target.value)}
-                    className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-gray-700 min-w-32"
                   >
-                    <option value="javascript">JavaScript</option>
-                    <option value="typescript">TypeScript</option>
-                    <option value="python">Python</option>
-                    <option value="java">Java</option>
-                    <option value="cpp">C++</option>
-                    <option value="csharp">C#</option>
-                    <option value="php">PHP</option>
-                    <option value="ruby">Ruby</option>
-                    <option value="go">Go</option>
-                    <option value="rust">Rust</option>
-                    <option value="html">HTML</option>
-                    <option value="css">CSS</option>
-                    <option value="sql">SQL</option>
-                    <option value="json">JSON</option>
-                    <option value="xml">XML</option>
-                    <option value="yaml">YAML</option>
-                    <option value="markdown">Markdown</option>
-                    <option value="bash">Bash</option>
-                    <option value="powershell">PowerShell</option>
-                    <option value="dockerfile">Dockerfile</option>
+                    <option value="javascript" className="text-gray-900 bg-white">JavaScript</option>
+                    <option value="typescript" className="text-gray-900 bg-white">TypeScript</option>
+                    <option value="python" className="text-gray-900 bg-white">Python</option>
+                    <option value="java" className="text-gray-900 bg-white">Java</option>
+                    <option value="cpp" className="text-gray-900 bg-white">C++</option>
+                    <option value="csharp" className="text-gray-900 bg-white">C#</option>
+                    <option value="php" className="text-gray-900 bg-white">PHP</option>
+                    <option value="ruby" className="text-gray-900 bg-white">Ruby</option>
+                    <option value="go" className="text-gray-900 bg-white">Go</option>
+                    <option value="rust" className="text-gray-900 bg-white">Rust</option>
+                    <option value="html" className="text-gray-900 bg-white">HTML</option>
+                    <option value="css" className="text-gray-900 bg-white">CSS</option>
+                    <option value="sql" className="text-gray-900 bg-white">SQL</option>
+                    <option value="json" className="text-gray-900 bg-white">JSON</option>
+                    <option value="xml" className="text-gray-900 bg-white">XML</option>
+                    <option value="yaml" className="text-gray-900 bg-white">YAML</option>
+                    <option value="markdown" className="text-gray-900 bg-white">Markdown</option>
+                    <option value="bash" className="text-gray-900 bg-white">Bash</option>
+                    <option value="powershell" className="text-gray-900 bg-white">PowerShell</option>
+                    <option value="dockerfile" className="text-gray-900 bg-white">Dockerfile</option>
                   </select>
-                </div>
-
-                {/* Code editor and preview side by side */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  {/* Code input */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Edit Code:</label>
-                    <textarea
-                      value={content}
-                      onChange={handleContentChange}
-                      onBlur={handleBlurSave}
-                      placeholder={`Start typing your ${codeLanguage} code here...`}
-                      className="w-full h-96 p-3 text-sm font-mono text-gray-700 placeholder-gray-400 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                      style={{ minHeight: '400px' }}
-                    />
-                  </div>
-
-                  {/* Code preview */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Preview:</label>
-                    <div className="border border-gray-300 rounded overflow-hidden" style={{ minHeight: '400px' }}>
-                      <SyntaxHighlighter
-                        language={codeLanguage}
-                        style={tomorrow}
-                        customStyle={{
-                          margin: 0,
-                          padding: '12px',
-                          fontSize: '14px',
-                          minHeight: '400px',
-                          height: '100%'
-                        }}
-                        wrapLines={true}
-                        wrapLongLines={true}
-                      >
-                        {content || `// Start typing your ${codeLanguage} code...`}
-                      </SyntaxHighlighter>
-                    </div>
-                  </div>
-                </div>
+                )}
+              </div>
+            </div>
+          </div>{/* Content area */}
+          <div className="p-4">
+            {isCodeView ? (
+              <div className="space-y-4">
+                {/* Direct code editor with syntax highlighting */}
+                <CodeEditor
+                  value={content}
+                  language={codeLanguage}
+                  placeholder={`Start typing your ${codeLanguage} code here...`}
+                  onChange={(evn) => {
+                    const newContent = evn.target.value;
+                    setContent(newContent);
+                    if (isInitialized) {
+                      debouncedSave(newContent, title);
+                    }
+                  }}
+                  onBlur={handleBlurSave}
+                  padding={16}                  style={{
+                    fontSize: 14,
+                    backgroundColor: "#000000",
+                    color: "#ffffff",
+                    fontFamily: 'ui-monospace,SFMono-Regular,"SF Mono",Monaco,Consolas,"Liberation Mono","Menlo",monospace',
+                    minHeight: '500px',
+                    border: '1px solid #374151',
+                    borderRadius: '6px'
+                  }}
+                />
               </div>
             ) : (
               <textarea
@@ -804,15 +875,15 @@ export default function NotePage() {
           </div>          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <Code className="h-5 w-5 text-purple-600" />
-              <h3 className="font-semibold text-purple-900">Code Features</h3>
+              <h3 className="font-semibold text-purple-900">Code Editor</h3>
             </div>
             <p className="text-purple-700 text-sm mb-2">
-              Toggle between plain text and code view with syntax highlighting.
+              Direct code editing with syntax highlighting for 20+ languages.
             </p>
             <div className="space-y-1 text-xs text-purple-600">
               <div className="flex items-center space-x-2">
                 <Download className="h-3 w-3" />
-                <span>Download as TXT, MD, or JSON</span>
+                <span>Download as language-specific files</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Code className="h-3 w-3" />
