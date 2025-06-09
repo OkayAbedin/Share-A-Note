@@ -19,8 +19,10 @@ import {
   FileDown
 } from 'lucide-react';
 import { formatTimestamp } from '@/lib/utils';
+import { firebaseTracker } from '@/lib/firebase-analytics';
 import toast, { Toaster } from 'react-hot-toast';
 import CodeEditor from '@uiw/react-textarea-code-editor';
+import FirebaseUsageDisplay from '@/components/FirebaseUsageDisplay';
 
 export default function NotePage() {
   const params = useParams();
@@ -32,14 +34,59 @@ export default function NotePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);  const [user, setUser] = useState<User | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);  const [isOnline, setIsOnline] = useState(true);
-  const [hasError, setHasError] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false); // Track if note has been loaded from Firestore
+  const [hasError, setHasError] = useState(false);  const [isInitialized, setIsInitialized] = useState(false); // Track if note has been loaded from Firestore
   const [isCodeView, setIsCodeView] = useState(false); // Track code formatting view
   const [codeLanguage, setCodeLanguage] = useState('javascript'); // Default code language
+  
+  // Local storage for offline backup and reduced Firebase reads
+  const [localBackup, setLocalBackup] = useState<{content: string, title: string, timestamp: number} | null>(null);
   
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  // Local storage utilities for offline backup and Firebase optimization
+  const saveToLocalStorage = (content: string, title: string) => {
+    try {
+      const backup = {
+        content,
+        title,
+        timestamp: Date.now(),
+        noteId
+      };
+      localStorage.setItem(`note_backup_${noteId}`, JSON.stringify(backup));
+      setLocalBackup(backup);
+      console.log('💾 Saved backup to localStorage');
+    } catch (error) {
+      console.warn('Failed to save to localStorage:', error);
+    }
+  };
+
+  const loadFromLocalStorage = () => {
+    try {
+      const backup = localStorage.getItem(`note_backup_${noteId}`);
+      if (backup) {
+        const parsed = JSON.parse(backup);
+        setLocalBackup(parsed);
+        console.log('📱 Loaded backup from localStorage', {
+          contentLength: parsed.content?.length || 0,
+          title: parsed.title,
+          age: Date.now() - parsed.timestamp
+        });
+        return parsed;
+      }
+    } catch (error) {
+      console.warn('Failed to load from localStorage:', error);
+    }
+    return null;
+  };
+
+  // Initialize local storage on component mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && noteId) {
+      loadFromLocalStorage();
+    }
+  }, [noteId]);
+
   // Initialize authentication and load note
   useEffect(() => {
     const initializeAuth = async () => {
@@ -80,10 +127,12 @@ export default function NotePage() {
     if (!noteId || !user) return;
 
     console.log('Setting up note listener for:', noteId, 'user:', user.uid);
-    const noteRef = doc(db, 'notes', noteId);
-      const unsubscribe = onSnapshot(
+    const noteRef = doc(db, 'notes', noteId);    const unsubscribe = onSnapshot(
       noteRef,
       (docSnapshot) => {
+        // Track Firebase read operation
+        firebaseTracker.trackRead();
+        
         console.log('Note snapshot received:', docSnapshot.exists(), docSnapshot.data());
         
         if (docSnapshot.exists()) {
@@ -296,12 +345,16 @@ export default function NotePage() {
       };// For new notes, also add createdAt
       if (!note) {
         noteData.createdAt = serverTimestamp();
-      }
+      }      await setDoc(noteRef, noteData, { merge: true });
 
-      await setDoc(noteRef, noteData, { merge: true });
+      // Track Firebase write operation
+      firebaseTracker.trackWrite();
 
       console.log('Note saved successfully to Firestore');
       setLastSaved(new Date());
+      
+      // OPTIMIZATION: Also save to localStorage for offline access and reduced reads
+      saveToLocalStorage(newContent, finalTitle);
       
       // Only show toast for manual saves or when explicitly requested
       if (showToast) {
@@ -319,7 +372,7 @@ export default function NotePage() {
     } finally {
       setIsSaving(false);
     }
-  };  // Debounced save - longer delay for better UX
+  };  // Debounced save - optimized for Firebase free tier limits
   const debouncedSave = (newContent: string, newTitle: string) => {
     // Don't save until note has been properly initialized from Firestore
     if (!isInitialized) {
@@ -331,17 +384,57 @@ export default function NotePage() {
       clearTimeout(saveTimeoutRef.current);
     }
 
-    console.log('⏱️ Debounced save scheduled in 3 seconds...', {
+    // FIREBASE OPTIMIZATION: Check if we should throttle writes
+    const shouldThrottle = firebaseTracker.shouldThrottleWrites();
+    
+    // FIREBASE OPTIMIZATION: Longer debounce to reduce writes
+    // Firebase Free Tier Limits:
+    // - 50,000 document reads per day
+    // - 20,000 document writes per day  
+    // - 20,000 document deletes per day
+    // - 1 GB stored data
+    // - 10 GB bandwidth per month
+    let debounceTime = 8000; // 8 seconds to reduce write frequency
+
+    // Additional optimization: Only save if content has meaningfully changed
+    const hasSignificantChange = (
+      Math.abs(newContent.length - (note?.content?.length || 0)) > 10 || // 10+ character change
+      newTitle !== note?.title || // Title changed
+      !note // New note
+    );
+
+    if (!hasSignificantChange) {
+      console.log('📊 Minor change detected, extending debounce timer');
+      // For minor changes, use a longer debounce
+      debounceTime = shouldThrottle ? 30000 : 15000; // 30s if throttling, 15s otherwise
+      
+      saveTimeoutRef.current = setTimeout(() => {
+        console.log('⏰ Extended debounced save executing...');
+        saveNote(newContent, newTitle, false);
+      }, debounceTime);
+      return;
+    }
+
+    // If we're approaching Firebase limits, increase debounce time
+    if (shouldThrottle) {
+      debounceTime = 20000; // 20 seconds when throttling
+      console.log('🚦 Firebase throttling active - extended debounce to 20 seconds');
+    }
+
+    console.log('⏱️ Debounced save scheduled', {
+      debounceTime: debounceTime / 1000 + 's',
       contentLength: newContent.length,
       title: newTitle,
       hasExistingNote: !!note,
-      isInitialized
+      isInitialized,
+      significantChange: hasSignificantChange,
+      throttling: shouldThrottle
     });
 
     saveTimeoutRef.current = setTimeout(() => {
       console.log('⏰ Debounced save executing now...');
       saveNote(newContent, newTitle, false); // Don't show toast for auto-saves
-    }, 3000); // Save after 3 seconds of inactivity
+    }, debounceTime);
   };
   // Save when user leaves the text area
   const handleBlurSave = () => {
@@ -368,14 +461,14 @@ export default function NotePage() {
     // Update state
     setContent(newContent);
     
-    // Only trigger save if already initialized
+    // OPTIMIZATION: Always save to localStorage immediately for offline access
     if (isInitialized) {
+      saveToLocalStorage(newContent, title);
       debouncedSave(newContent, title);
     } else {
       console.log('🚫 Skipped content save - note not initialized');
     }
-  };
-  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  };  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value; // Allow empty titles during editing
     console.log('📝 Title changed:', { 
       newTitle, 
@@ -387,8 +480,9 @@ export default function NotePage() {
     // Update state
     setTitle(newTitle);
     
-    // Only trigger save if already initialized
+    // OPTIMIZATION: Always save to localStorage immediately for offline access
     if (isInitialized) {
+      saveToLocalStorage(content, newTitle);
       debouncedSave(content, newTitle);
     } else {
       console.log('🚫 Skipped title save - note not initialized');
@@ -571,10 +665,12 @@ export default function NotePage() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <Toaster position="top-right" />
+      
+      {/* Firebase Usage Display - Development Only */}
+      <FirebaseUsageDisplay />
       
       {/* Header */}
       <header className="bg-white border-b shadow-sm sticky top-0 z-10">

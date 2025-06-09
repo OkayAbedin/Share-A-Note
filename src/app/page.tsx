@@ -62,39 +62,39 @@ export default function Home() {
         </div>
 
         {/* Features */}
-        <div className="grid md:grid-cols-3 gap-8 mt-20">
-          <div className="text-center p-6 rounded-xl bg-white shadow-lg hover:shadow-xl transition-shadow">
-            <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Share2 className="h-8 w-8 text-blue-600" />
+        <div className="grid md:grid-cols-3 gap-4 md:gap-8 mt-20">
+          <div className="text-center p-4 md:p-6 rounded-xl bg-white shadow-lg hover:shadow-xl transition-shadow">
+            <div className="bg-blue-100 w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+              <Share2 className="h-6 w-6 md:h-8 md:w-8 text-blue-600" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">
               Custom URLs
             </h3>
-            <p className="text-gray-600">
+            <p className="text-sm md:text-base text-gray-600">
               Get shareable links like shareanote.vercel.app/noteno123 that anyone can access instantly
             </p>
           </div>
 
-          <div className="text-center p-6 rounded-xl bg-white shadow-lg hover:shadow-xl transition-shadow">
-            <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="h-8 w-8 text-green-600" />
+          <div className="text-center p-4 md:p-6 rounded-xl bg-white shadow-lg hover:shadow-xl transition-shadow">
+            <div className="bg-green-100 w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+              <Users className="h-6 w-6 md:h-8 md:w-8 text-green-600" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">
               Real-time Collaboration
             </h3>
-            <p className="text-gray-600">
+            <p className="text-sm md:text-base text-gray-600">
               Multiple people can edit the same note simultaneously with live updates
             </p>
           </div>
 
-          <div className="text-center p-6 rounded-xl bg-white shadow-lg hover:shadow-xl transition-shadow">
-            <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Zap className="h-8 w-8 text-purple-600" />
+          <div className="text-center p-4 md:p-6 rounded-xl bg-white shadow-lg hover:shadow-xl transition-shadow">
+            <div className="bg-purple-100 w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+              <Zap className="h-6 w-6 md:h-8 md:w-8 text-purple-600" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg md:text-xl font-semibold text-gray-900 mb-2">
               No Registration
             </h3>
-            <p className="text-gray-600">
+            <p className="text-sm md:text-base text-gray-600">
               Start writing immediately. No accounts, no passwords, no barriers
             </p>
           </div>
@@ -124,16 +124,6 @@ export default function Home() {
                 Minhaz
               </a>
             </p>
-            {process.env.NODE_ENV === 'development' && (
-              <div className="mt-4">
-                <Link 
-                  href="/test" 
-                  className="text-blue-600 hover:text-blue-800 text-sm underline"
-                >
-                  🔧 Debug Firebase Connection
-                </Link>
-              </div>
-            )}
           </div>
         </div>
       </footer>
