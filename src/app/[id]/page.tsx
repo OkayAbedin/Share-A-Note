@@ -239,10 +239,10 @@ export default function NotePage() {
         isInitializing: !isInitialized 
       });
       return;
-    }
-
-    // Don't save if content hasn't actually changed (but allow first save when note is null)
-    if (note && newContent === note?.content && newTitle === note?.title) {
+    }    // Don't save if content hasn't actually changed (but allow first save when note is null)
+    // Apply default title for comparison
+    const finalTitle = newTitle.trim() || 'Untitled Note';
+    if (note && newContent === note?.content && finalTitle === note?.title) {
       console.log('No changes detected, skipping save');
       return;
     }
@@ -254,20 +254,22 @@ export default function NotePage() {
       userUid: user.uid,
       isInitialized
     });
-    setIsSaving(true);
-      try {
+    setIsSaving(true);    try {
       const noteRef = doc(db, 'notes', noteId);
+      
+      // Apply default title only when saving to database
+      const finalTitle = newTitle.trim() || 'Untitled Note';
       
       const noteData: Record<string, unknown> = {
         id: noteId,
         content: newContent,
-        title: newTitle,
+        title: finalTitle,
         updatedAt: serverTimestamp(),
         lastEditedBy: user.uid,
         collaborators: note?.collaborators?.includes(user.uid) 
           ? note.collaborators 
           : [...(note?.collaborators || []), user.uid],
-      };      // For new notes, also add createdAt
+      };// For new notes, also add createdAt
       if (!note) {
         noteData.createdAt = serverTimestamp();
       }
@@ -349,9 +351,8 @@ export default function NotePage() {
       console.log('🚫 Skipped content save - note not initialized');
     }
   };
-
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTitle = e.target.value || 'Untitled Note';
+    const newTitle = e.target.value; // Allow empty titles during editing
     console.log('📝 Title changed:', { 
       newTitle, 
       hasExistingNote: !!note,
