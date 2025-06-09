@@ -21,10 +21,9 @@ export default function Home() {
       {/* Header */}
       <header className="bg-white border-b shadow-sm">
         <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+          <div className="flex items-center justify-between">            <div className="flex items-center space-x-2">
               <FileText className="h-8 w-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">ShareACode</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Share-A-Note</h1>
             </div>
             <button
               onClick={createNewNote}
@@ -70,7 +69,7 @@ export default function Home() {
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               Custom URLs
             </h3>            <p className="text-gray-600">
-              Get shareable links like shareacode.vercel.app/noteno123 that anyone can access instantly
+              Get shareable links like shareanote.vercel.app/noteno123 that anyone can access instantly
             </p>
           </div>
 
@@ -102,7 +101,7 @@ export default function Home() {
         {/* Demo URL Example */}
         <div className="mt-16 text-center">
           <p className="text-gray-600 mb-4">Example URL:</p>          <div className="inline-block bg-gray-100 px-6 py-3 rounded-lg font-mono text-gray-800">
-            https://shareacode.vercel.app/noteno01
+            https://shareanote.vercel.app/noteno01
           </div>
         </div>
       </main>

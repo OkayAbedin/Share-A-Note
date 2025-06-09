@@ -20,7 +20,7 @@ export default function Home() {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className="h-8 w-8 bg-blue-600 rounded"></div>
-              <h1 className="text-2xl font-bold text-gray-900">ShareACode</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Share-A-Note</h1>
             </div>
             <button
               onClick={createNewNote}

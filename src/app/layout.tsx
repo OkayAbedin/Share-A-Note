@@ -13,22 +13,22 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ShareACode - Share Notes Instantly",
+  title: "Share-A-Note - Share Notes Instantly",
   description: "Create and share collaborative notes with custom URLs. No account required. Perfect for quick sharing, team collaboration, and anonymous note-taking.",
   keywords: ["notes", "sharing", "collaboration", "anonymous", "real-time", "markdown"],
-  authors: [{ name: "ShareACode" }],
-  creator: "ShareACode",
-  publisher: "ShareACode",
+  authors: [{ name: "Share-A-Note" }],
+  creator: "Share-A-Note",
+  publisher: "Share-A-Note",
   robots: "index, follow",
   openGraph: {
-    title: "ShareACode - Share Notes Instantly",
+    title: "Share-A-Note - Share Notes Instantly",
     description: "Create and share collaborative notes with custom URLs. No account required.",
     type: "website",
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "ShareACode - Share Notes Instantly",
+    title: "Share-A-Note - Share Notes Instantly",
     description: "Create and share collaborative notes with custom URLs. No account required.",
   },
 };

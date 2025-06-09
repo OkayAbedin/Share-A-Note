@@ -1,10 +1,10 @@
-# ShareACode - Share Notes Instantly
+# Share-A-Note - Share Notes Instantly
 
 A modern, real-time collaborative note-sharing application built with Next.js 14, Firebase, and TypeScript. Create and share notes with custom URLs - no registration required!
 
 ## ✨ Features
 
-- **🔗 Custom URLs**: Share notes with memorable links like `shareacode.vercel.app/noteno123`
+- **🔗 Custom URLs**: Share notes with memorable links like `shareanote.vercel.app/noteno123`
 - **⚡ Real-time Collaboration**: Multiple users can edit simultaneously with live updates
 - **🚫 No Registration**: Anonymous authentication - start writing immediately
 - **💾 Auto-save**: Notes are automatically saved as you type
@@ -34,7 +34,7 @@ A modern, real-time collaborative note-sharing application built with Next.js 14
 1. **Clone the repository**
    ```bash
    git clone <your-repo-url>
-   cd shareacode
+   cd share-a-note
    ```
 
 2. **Install dependencies**
