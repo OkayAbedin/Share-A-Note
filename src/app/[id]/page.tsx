@@ -98,13 +98,23 @@ export default function NotePage() {
           });
           
           setNote(noteData);
-          
-          // Always update the state with the latest data from Firestore on initial load
+            // Always update the state with the latest data from Firestore on initial load
           // After initialization, only update if content is significantly different (to avoid cursor jumping)
           if (!isInitialized) {
             console.log('📥 Initial load - setting content from Firestore');
             setContent(noteData.content || '');
             setTitle(noteData.title || 'Untitled Note');
+            
+            // Load code view preference and language from saved note
+            if (noteData.isCodeView !== undefined) {
+              setIsCodeView(noteData.isCodeView);
+              console.log('📥 Loaded code view preference:', noteData.isCodeView);
+            }
+            if (noteData.codeLanguage) {
+              setCodeLanguage(noteData.codeLanguage);
+              console.log('📥 Loaded code language preference:', noteData.codeLanguage);
+            }
+            
             setIsInitialized(true);
           } else {
             // Only update if the content is significantly different (avoid minor changes from real-time collaboration)
@@ -121,7 +131,17 @@ export default function NotePage() {
               setContent(noteData.content || '');
               setTitle(noteData.title || 'Untitled Note');
             }
-          }          
+            
+            // Update code view preferences if they changed
+            if (noteData.isCodeView !== undefined && noteData.isCodeView !== isCodeView) {
+              setIsCodeView(noteData.isCodeView);
+              console.log('📥 Updated code view preference from external source:', noteData.isCodeView);
+            }
+            if (noteData.codeLanguage && noteData.codeLanguage !== codeLanguage) {
+              setCodeLanguage(noteData.codeLanguage);
+              console.log('📥 Updated code language preference from external source:', noteData.codeLanguage);
+            }
+          }
           console.log('Note loaded successfully:', noteData);
         } else {
           // Note doesn't exist - just set empty state, don't auto-create
@@ -242,7 +262,11 @@ export default function NotePage() {
     }    // Don't save if content hasn't actually changed (but allow first save when note is null)
     // Apply default title for comparison
     const finalTitle = newTitle.trim() || 'Untitled Note';
-    if (note && newContent === note?.content && finalTitle === note?.title) {
+    if (note && 
+        newContent === note?.content && 
+        finalTitle === note?.title && 
+        isCodeView === note?.isCodeView && 
+        codeLanguage === note?.codeLanguage) {
       console.log('No changes detected, skipping save');
       return;
     }
@@ -259,8 +283,7 @@ export default function NotePage() {
       
       // Apply default title only when saving to database
       const finalTitle = newTitle.trim() || 'Untitled Note';
-      
-      const noteData: Record<string, unknown> = {
+        const noteData: Record<string, unknown> = {
         id: noteId,
         content: newContent,
         title: finalTitle,
@@ -269,6 +292,8 @@ export default function NotePage() {
         collaborators: note?.collaborators?.includes(user.uid) 
           ? note.collaborators 
           : [...(note?.collaborators || []), user.uid],
+        isCodeView: isCodeView, // Save code view preference
+        codeLanguage: codeLanguage, // Save selected language
       };// For new notes, also add createdAt
       if (!note) {
         noteData.createdAt = serverTimestamp();
@@ -384,16 +409,26 @@ export default function NotePage() {
     }
     saveNote(content, title, true); // Show toast for manual saves
   };
-
   const toggleCodeView = () => {
-    setIsCodeView(!isCodeView);
-    toast.success(isCodeView ? 'Switched to plain text view' : 'Switched to code view');
+    const newCodeView = !isCodeView;
+    setIsCodeView(newCodeView);
+    toast.success(newCodeView ? 'Switched to code view' : 'Switched to plain text view');
+    
+    // Save the preference change immediately if initialized
+    if (isInitialized) {
+      debouncedSave(content, title);
+    }
   };
 
   const handleLanguageChange = (language: string) => {
     setCodeLanguage(language);
     toast.success(`Code language set to ${language}`);
-  };  const downloadNote = (format: 'txt' | 'md' | 'json' | 'code') => {
+    
+    // Save the language preference change immediately if initialized
+    if (isInitialized) {
+      debouncedSave(content, title);
+    }
+  };const downloadNote = (format: 'txt' | 'md' | 'json' | 'code') => {
     const noteData = {
       id: noteId,
       title: title,

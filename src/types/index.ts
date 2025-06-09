@@ -6,6 +6,8 @@ export interface Note {
   updatedAt: any; // eslint-disable-line @typescript-eslint/no-explicit-any
   lastEditedBy?: string;
   collaborators: string[];
+  isCodeView?: boolean; // Remember if note was last saved in code mode
+  codeLanguage?: string; // Remember the last selected language
 }
 
 export interface User {
