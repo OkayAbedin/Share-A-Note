@@ -336,10 +336,11 @@ export default function NotePage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isCodeView]);// Handle cleanup before component unmounts or page unloads
+  }, [isCodeView]);  // Handle cleanup before component unmounts or page unloads
   useEffect(() => {
     // Only cleanup timers, don't save automatically (we have manual save system)
     const handleBeforeUnload = () => {
+      // Just clean up timers on unload, don't auto-save to Firebase
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -363,7 +364,7 @@ export default function NotePage() {
     
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      // Just clean up timers when component unmounts, don't auto-save
+      // Just clean up timers when component unmounts, don't auto-save to Firebase
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -672,15 +673,19 @@ export default function NotePage() {
     } catch (err) {
       console.error('Failed to copy formatted content:', err);
       toast.error('Failed to copy content');
-    }  };
-  // Get note expiry information - always show based on last save time
+    }  };  // Get note expiry information - always show based on last save time
   const noteExpiryInfo = useMemo(() => {
-    if (!note?.updatedAt) return null;
+    // If there's no note data yet, we can't show expiry info
+    if (!note) return null;
     
-    // Always use the actual last saved time, regardless of editing status
-    // This ensures the expiry notice remains visible at all times
-    return NoteCleanup.getNoteExpiryInfo(note.updatedAt);
-  }, [note?.updatedAt]);
+    // If note exists but doesn't have an updatedAt timestamp, create a fallback
+    // This handles new notes or edge cases
+    const timestamp = note.updatedAt || note.createdAt || new Date();
+    
+    // Always calculate expiry info based on the actual timestamp from the database,
+    // regardless of editing or saving status
+    return NoteCleanup.getNoteExpiryInfo(timestamp);
+  }, [note]);
 
   if (isLoading) {
     return (
@@ -1006,7 +1011,8 @@ export default function NotePage() {
           </div>
         </div>        {/* Info section */}
         <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Note expiry warning */}          {noteExpiryInfo && (
+          {/* Note expiry warning - always show if note exists */}
+          {note && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="flex items-center space-x-2 mb-2">
                 <Clock className="h-5 w-5 text-red-600" />
@@ -1014,12 +1020,11 @@ export default function NotePage() {
                   Note Expiry
                 </h3>
               </div>
-              <p className="text-sm text-red-700">
-                {noteExpiryInfo.isExpired 
+              <p className="text-sm text-red-700">                {noteExpiryInfo?.isExpired 
                   ? `This note has expired and will be deleted automatically.`
-                  : noteExpiryInfo.daysUntilExpiry <= 3
+                  : noteExpiryInfo && noteExpiryInfo.daysUntilExpiry !== undefined && noteExpiryInfo.daysUntilExpiry <= 3
                   ? `This note will be deleted in ${noteExpiryInfo.daysUntilExpiry} day${noteExpiryInfo.daysUntilExpiry !== 1 ? 's' : ''}.`
-                  : `This note will be automatically deleted in ${noteExpiryInfo.daysUntilExpiry} days.`
+                  : `This note will be automatically deleted in ${noteExpiryInfo?.daysUntilExpiry ?? 14} days.`
                 }
                 <br />
                 <span className="text-xs opacity-75">
