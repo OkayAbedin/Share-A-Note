@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { formatTimestamp } from '@/lib/utils';
 import { firebaseTracker } from '@/lib/firebase-analytics';
+import { NoteCleanup } from '@/lib/note-cleanup';
 import toast, { Toaster } from 'react-hot-toast';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 import FirebaseUsageDisplay from '@/components/FirebaseUsageDisplay';
@@ -27,38 +28,43 @@ import FirebaseUsageDisplay from '@/components/FirebaseUsageDisplay';
 export default function NotePage() {
   const params = useParams();
   const router = useRouter();
-  const noteId = params.id as string;
-  const [note, setNote] = useState<Note | null>(null);
+  const noteId = params.id as string;  const [note, setNote] = useState<Note | null>(null);
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);  const [user, setUser] = useState<User | null>(null);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);  const [isOnline, setIsOnline] = useState(true);
-  const [hasError, setHasError] = useState(false);  const [isInitialized, setIsInitialized] = useState(false); // Track if note has been loaded from Firestore
+  const [isSaving, setIsSaving] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false); // Track if note has been loaded from Firestore
   const [isCodeView, setIsCodeView] = useState(false); // Track code formatting view
   const [codeLanguage, setCodeLanguage] = useState('javascript'); // Default code language
   const [lastUserEdit, setLastUserEdit] = useState<number>(0); // Timestamp of last user edit
   const [isTyping, setIsTyping] = useState(false); // Track if user is actively typing
   const [cursorPosition, setCursorPosition] = useState<{start: number, end: number} | null>(null); // Preserve cursor position
-  
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false); // Track unsaved changes
   // Local storage for offline backup and reduced Firebase reads
   const [localBackup, setLocalBackup] = useState<{content: string, title: string, timestamp: number} | null>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const externalUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);// Local storage utilities for offline backup and Firebase optimization
-  const saveToLocalStorage = (content: string, title: string) => {
+  const externalUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // LOCAL STORAGE UTILITIES FOR CLIENT-SIDE STORAGE (MANUAL SAVE ONLY)
+  const saveToLocalStorage = (content: string, title: string, isUnsaved: boolean = false) => {
     try {
       const backup = {
         content,
         title,
         timestamp: Date.now(),
-        noteId
+        noteId,
+        isUnsaved
       };
       localStorage.setItem(`note_backup_${noteId}`, JSON.stringify(backup));
       setLocalBackup(backup);
-      console.log('💾 Saved backup to localStorage');
+      console.log('💾 Saved to localStorage', { isUnsaved });
     } catch (error) {
       console.warn('Failed to save to localStorage:', error);
     }
@@ -102,18 +108,24 @@ export default function NotePage() {
       setTimeout(restoreCursorPosition, 0);
     }, 100); // Small delay to batch rapid updates
   };
-
   const loadFromLocalStorage = () => {
     try {
       const backup = localStorage.getItem(`note_backup_${noteId}`);
       if (backup) {
         const parsed = JSON.parse(backup);
         setLocalBackup(parsed);
-        console.log('📱 Loaded backup from localStorage', {
+        console.log('📱 Loaded from localStorage', {
           contentLength: parsed.content?.length || 0,
           title: parsed.title,
-          age: Date.now() - parsed.timestamp
+          age: Date.now() - parsed.timestamp,
+          isUnsaved: parsed.isUnsaved
         });
+        
+        // If there are unsaved changes in localStorage, mark as unsaved
+        if (parsed.isUnsaved) {
+          setHasUnsavedChanges(true);
+        }
+        
         return parsed;
       }
     } catch (error) {
@@ -176,8 +188,7 @@ export default function NotePage() {
         firebaseTracker.trackRead();
         
         console.log('Note snapshot received:', docSnapshot.exists(), docSnapshot.data());
-        
-        if (docSnapshot.exists()) {
+          if (docSnapshot.exists()) {
           const noteData = docSnapshot.data() as Note;
           console.log('✅ Found existing note:', {
             id: noteData.id,
@@ -187,11 +198,11 @@ export default function NotePage() {
             collaborators: noteData.collaborators?.length || 0
           });
           
+          // Always update the note state to keep metadata current (expiry info, collaborators, etc.)
           setNote(noteData);
             // Always update the state with the latest data from Firestore on initial load
           // After initialization, only update if content is significantly different (to avoid cursor jumping)
-          if (!isInitialized) {            console.log('📥 Initial load - setting content from Firestore');
-            setContent(noteData.content || '');
+          if (!isInitialized) {            console.log('📥 Initial load - setting content from Firestore');            setContent(noteData.content || '');
             setTitle(noteData.title || '');
             
             // Load code view preference and language from saved note
@@ -202,9 +213,22 @@ export default function NotePage() {
             if (noteData.codeLanguage) {
               setCodeLanguage(noteData.codeLanguage);
               console.log('📥 Loaded code language preference:', noteData.codeLanguage);
+            }            // Check if we have newer unsaved changes in localStorage
+            const localData = loadFromLocalStorage();
+            if (localData && localData.isUnsaved && localData.timestamp > (noteData.updatedAt?.toMillis?.() || 0)) {
+              console.log('📱 Found newer unsaved changes in localStorage, using local version');
+              setContent(localData.content);
+              setTitle(localData.title);
+              setHasUnsavedChanges(true);
+              
+              // Silent restore - no toast notification
+            } else {
+              // Clear any old localStorage data that's been saved
+              saveToLocalStorage(noteData.content || '', noteData.title || '', false);
+              setHasUnsavedChanges(false);
             }
             
-            setIsInitialized(true);          } else {
+            setIsInitialized(true);} else {
             // Only update if the content is significantly different (avoid minor changes from real-time collaboration)
             const contentChanged = noteData.content !== content;
             const titleChanged = noteData.title !== title;
@@ -312,33 +336,10 @@ export default function NotePage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isCodeView]);// Save before component unmounts or page unloads
+  }, [isCodeView]);// Handle cleanup before component unmounts or page unloads
   useEffect(() => {
-    // Define the save function inside this effect to avoid dependency issues
-    const saveBeforeUnload = (unloadContent: string, unloadTitle: string) => {
-      if (!user || !noteId || !isInitialized) return;
-      
-      // Only save if there are changes
-      if (unloadContent !== note?.content || unloadTitle !== note?.title) {
-        console.log('💾 Saving on page unload/component unmount');
-          // Inline the save logic to avoid dependencies
-        const noteRef = doc(db, 'notes', noteId);
-        const noteData: Record<string, unknown> = {
-          id: noteId,
-          content: unloadContent,
-          title: unloadTitle,
-          updatedAt: serverTimestamp(),
-          lastEditedBy: user.uid,
-          collaborators: note?.collaborators?.includes(user.uid)
-            ? note.collaborators
-            : [...(note?.collaborators || []), user.uid],
-        };
-        
-        setDoc(noteRef, noteData, { merge: true })
-          .then(() => console.log('Saved before unload'))
-          .catch(err => console.error('Failed to save before unload:', err));
-      }
-    };    const handleBeforeUnload = () => {
+    // Only cleanup timers, don't save automatically (we have manual save system)
+    const handleBeforeUnload = () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -349,62 +350,58 @@ export default function NotePage() {
         clearTimeout(externalUpdateTimeoutRef.current);
       }
       
-      // Only save if initialized and there are actual changes
-      if (isInitialized) {
-        saveBeforeUnload(content, title);
-      } else {
-        console.log('🚫 Skipped unload save - note not initialized');
+      // If there are unsaved changes, notify the user
+      if (hasUnsavedChanges) {
+        console.log('⚠️ Note has unsaved changes on page unload');
+        // This will prompt a browser confirmation dialog asking if the user wants to leave
+        // Note: This only works in some browsers and situations due to security restrictions
+        return "You have unsaved changes. Are you sure you want to leave?";
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);    return () => {
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      // Also save when component unmounts (but only if initialized)
-      handleBeforeUnload();
+      // Just clean up timers when component unmounts, don't auto-save
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      if (externalUpdateTimeoutRef.current) {
+        clearTimeout(externalUpdateTimeoutRef.current);
+      }
     };
-  }, [user, noteId, content, title, note?.content, note?.title, note?.collaborators, isInitialized]);
-
-  // Auto-save functionality
-  const saveNote = async (newContent: string, newTitle: string, showToast = false) => {
+  }, [hasUnsavedChanges]);
+  // Manual save functionality - ONLY saves when user clicks save button
+  const saveNote = async (newContent: string, newTitle: string, showToast = true) => {
     if (!user || !noteId) {
       console.log('Cannot save: missing user or noteId', { user: !!user, noteId });
       return;
     }
 
-    // CRITICAL FIX: If the component is still initializing, DO NOT save (prevents overwrite)
+    // If the component is still initializing, DO NOT save
     if (!isInitialized) {
       console.log('🚫 PREVENTED: Attempted save before initialization complete.');
-      console.log('This would have overwritten the note with:', { 
-        contentLength: newContent.length,
-        title: newTitle,
-        isInitializing: !isInitialized 
-      });
-      return;
-    }    // Don't save if content hasn't actually changed (but allow first save when note is null)
-    // Apply default title for comparison
-    const finalTitle = newTitle.trim() || 'Untitled Note';
-    if (note && 
-        newContent === note?.content && 
-        finalTitle === note?.title && 
-        isCodeView === note?.isCodeView && 
-        codeLanguage === note?.codeLanguage) {
-      console.log('No changes detected, skipping save');
       return;
     }
 
-    console.log('Saving note:', { 
+    console.log('💾 MANUAL SAVE - Saving note to Firestore:', { 
       noteId, 
       contentLength: newContent.length, 
       title: newTitle, 
-      userUid: user.uid,
-      isInitialized
+      userUid: user.uid
     });
-    setIsSaving(true);    try {
+    setIsSaving(true);
+
+    try {
       const noteRef = doc(db, 'notes', noteId);
       
       // Apply default title only when saving to database
       const finalTitle = newTitle.trim() || 'Untitled Note';
-        const noteData: Record<string, unknown> = {
+      const noteData: Record<string, unknown> = {
         id: noteId,
         content: newContent,
         title: finalTitle,
@@ -413,122 +410,48 @@ export default function NotePage() {
         collaborators: note?.collaborators?.includes(user.uid) 
           ? note.collaborators 
           : [...(note?.collaborators || []), user.uid],
-        isCodeView: isCodeView, // Save code view preference
-        codeLanguage: codeLanguage, // Save selected language
-      };// For new notes, also add createdAt
+        isCodeView: isCodeView,
+        codeLanguage: codeLanguage,
+      };
+
+      // For new notes, also add createdAt
       if (!note) {
         noteData.createdAt = serverTimestamp();
-      }      await setDoc(noteRef, noteData, { merge: true });
+      }
+
+      await setDoc(noteRef, noteData, { merge: true });
 
       // Track Firebase write operation
-      firebaseTracker.trackWrite();
-
-      console.log('Note saved successfully to Firestore');
+      firebaseTracker.trackWrite();      console.log('✅ Note saved successfully to Firestore');
       setLastSaved(new Date());
       
-      // OPTIMIZATION: Also save to localStorage for offline access and reduced reads
-      saveToLocalStorage(newContent, finalTitle);
+      // Save to localStorage as saved (not unsaved)
+      saveToLocalStorage(newContent, finalTitle, false);
+      setHasUnsavedChanges(false);
       
-      // Only show toast for manual saves or when explicitly requested
       if (showToast) {
-        toast.success('Note saved!', { duration: 2000 });
+        toast.success('Note saved successfully!', { duration: 3000 });
       }
     } catch (error: unknown) {
-      console.error('Error saving note:', error);
-      console.error('Error details:', {
-        code: error && typeof error === 'object' && 'code' in error ? error.code : 'unknown',
-        message: error && typeof error === 'object' && 'message' in error ? error.message : 'unknown',
-        noteId,
-        userUid: user?.uid
-      });
+      console.error('❌ Error saving note:', error);
       toast.error('Failed to save note. Please try again.');
     } finally {
       setIsSaving(false);
     }
-  };  // Debounced save - optimized for Firebase free tier limits
-  const debouncedSave = (newContent: string, newTitle: string) => {
-    // Don't save until note has been properly initialized from Firestore
-    if (!isInitialized) {
-      console.log('🚫 Skipping save - note not yet initialized from Firestore');
-      return;
-    }
-
+  };  // Manual save function - called only when user clicks save button
+  const manualSave = () => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
     }
-
-    // FIREBASE OPTIMIZATION: Check if we should throttle writes
-    const shouldThrottle = firebaseTracker.shouldThrottleWrites();
-    
-    // FIREBASE OPTIMIZATION: Longer debounce to reduce writes
-    // Firebase Free Tier Limits:
-    // - 50,000 document reads per day
-    // - 20,000 document writes per day  
-    // - 20,000 document deletes per day
-    // - 1 GB stored data
-    // - 10 GB bandwidth per month
-    let debounceTime = 8000; // 8 seconds to reduce write frequency
-
-    // Additional optimization: Only save if content has meaningfully changed
-    const hasSignificantChange = (
-      Math.abs(newContent.length - (note?.content?.length || 0)) > 10 || // 10+ character change
-      newTitle !== note?.title || // Title changed
-      !note // New note
-    );
-
-    if (!hasSignificantChange) {
-      console.log('📊 Minor change detected, extending debounce timer');
-      // For minor changes, use a longer debounce
-      debounceTime = shouldThrottle ? 30000 : 15000; // 30s if throttling, 15s otherwise
-      
-      saveTimeoutRef.current = setTimeout(() => {
-        console.log('⏰ Extended debounced save executing...');
-        saveNote(newContent, newTitle, false);
-      }, debounceTime);
-      return;
-    }
-
-    // If we're approaching Firebase limits, increase debounce time
-    if (shouldThrottle) {
-      debounceTime = 20000; // 20 seconds when throttling
-      console.log('🚦 Firebase throttling active - extended debounce to 20 seconds');
-    }
-
-    console.log('⏱️ Debounced save scheduled', {
-      debounceTime: debounceTime / 1000 + 's',
-      contentLength: newContent.length,
-      title: newTitle,
-      hasExistingNote: !!note,
-      isInitialized,
-      significantChange: hasSignificantChange,
-      throttling: shouldThrottle
-    });
-
-    saveTimeoutRef.current = setTimeout(() => {
-      console.log('⏰ Debounced save executing now...');
-      saveNote(newContent, newTitle, false); // Don't show toast for auto-saves
-    }, debounceTime);
+    saveNote(content, title, true);
   };
-  // Save when user leaves the text area
-  const handleBlurSave = () => {
-    // Don't save until note has been properly initialized from Firestore
-    if (!isInitialized) {
-      console.log('🚫 Skipping blur save - note not yet initialized from Firestore');
-      return;
-    }
 
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    // Save immediately when user clicks away, but don't show toast
-    saveNote(content, title, false);
-  };  const handleContentChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  // Content change handler - ONLY saves to localStorage, no auto-save to Firebase
+  const handleContentChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
-    console.log('📝 Content changed:', { 
-      length: newContent.length, 
-      hasExistingNote: !!note,
-      noteId,
-      isInitialized
+    console.log('📝 Content changed (client-side only):', { 
+      length: newContent.length,
+      noteId
     });
     
     // Set typing state to prevent external updates
@@ -542,29 +465,23 @@ export default function NotePage() {
     // Set timeout to clear typing state after user stops typing
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
-    }, 1000); // 1 second after stopping typing
+    }, 1000);
     
     // Update state
     setContent(newContent);
-    
-    // Mark timestamp of user edit to prevent external updates from overriding
     setLastUserEdit(Date.now());
     
-    // OPTIMIZATION: Always save to localStorage immediately for offline access
+    // ONLY save to localStorage (client-side), NOT to Firebase
     if (isInitialized) {
-      saveToLocalStorage(newContent, title);
-      debouncedSave(newContent, title);
-    } else {
-      console.log('🚫 Skipped content save - note not initialized');
+      saveToLocalStorage(newContent, title, true); // Mark as unsaved
+      setHasUnsavedChanges(true);
     }
-  }, [note, noteId, isInitialized, title, saveToLocalStorage, debouncedSave]);  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newTitle = e.target.value; // Allow empty titles during editing
-    console.log('📝 Title changed:', { 
-      newTitle, 
-      hasExistingNote: !!note,
-      noteId,
-      isInitialized
-    });
+  }, [title, noteId, isInitialized]);
+
+  // Title change handler - ONLY saves to localStorage, no auto-save to Firebase
+  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTitle = e.target.value;
+    console.log('📝 Title changed (client-side only):', { newTitle, noteId });
     
     // Set typing state to prevent external updates
     setIsTyping(true);
@@ -577,22 +494,18 @@ export default function NotePage() {
     // Set timeout to clear typing state after user stops typing
     typingTimeoutRef.current = setTimeout(() => {
       setIsTyping(false);
-    }, 1000); // 1 second after stopping typing
+    }, 1000);
     
     // Update state
     setTitle(newTitle);
-    
-    // Mark timestamp of user edit to prevent external updates from overriding
     setLastUserEdit(Date.now());
     
-    // OPTIMIZATION: Always save to localStorage immediately for offline access
+    // ONLY save to localStorage (client-side), NOT to Firebase
     if (isInitialized) {
-      saveToLocalStorage(content, newTitle);
-      debouncedSave(content, newTitle);
-    } else {
-      console.log('🚫 Skipped title save - note not initialized');
+      saveToLocalStorage(content, newTitle, true); // Mark as unsaved
+      setHasUnsavedChanges(true);
     }
-  }, [note, noteId, isInitialized, content, saveToLocalStorage, debouncedSave]);
+  }, [content, noteId, isInitialized]);
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -601,11 +514,12 @@ export default function NotePage() {
       console.error('Failed to copy link:', err);
       toast.error('Failed to copy link');
     }
-  };  const manualSave = () => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    saveNote(content, title, true); // Show toast for manual saves
+  };
+
+  // Remove blur save since we only save manually now
+  const handleBlurSave = () => {
+    // No automatic save on blur - only manual saves
+    console.log('📝 Input blur - no auto-save (manual save only)');
   };  const toggleCodeView = () => {
     const newCodeView = !isCodeView;
     
@@ -626,49 +540,13 @@ export default function NotePage() {
     setIsCodeView(newCodeView);
     toast.success(newCodeView ? 'Switched to code view' : 'Switched to plain text view');
     
-    // CRITICAL FIX: Save the view preference change IMMEDIATELY to Firestore
-    // This prevents Firestore from reverting the change back to the old preference
-    if (isInitialized && user && noteId) {
-      console.log('💾 Immediately saving code view preference change:', newCodeView);
-      
-      // Cancel any pending debounced save to avoid conflicts
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-      
-      // Save immediately with the new view preference
-      const noteRef = doc(db, 'notes', noteId);
-      const noteData: Record<string, unknown> = {
-        id: noteId,
-        content: content,
-        title: title.trim() || 'Untitled Note',
-        updatedAt: serverTimestamp(),
-        lastEditedBy: user.uid,
-        collaborators: note?.collaborators?.includes(user.uid) 
-          ? note.collaborators 
-          : [...(note?.collaborators || []), user.uid],
-        isCodeView: newCodeView, // Immediately save the new code view preference
-        codeLanguage: codeLanguage,
-      };
-
-      // For new notes, also add createdAt
-      if (!note) {
-        noteData.createdAt = serverTimestamp();
-      }
-
-      setDoc(noteRef, noteData, { merge: true })
-        .then(() => {
-          console.log('✅ Code view preference saved immediately to Firestore');
-          firebaseTracker.trackWrite();
-          saveToLocalStorage(content, title.trim() || 'Untitled Note');
-        })
-        .catch((error) => {
-          console.error('❌ Failed to save code view preference:', error);
-          toast.error('Failed to save view preference');
-        });
+    // Save to localStorage only - no automatic Firebase save
+    if (isInitialized) {
+      saveToLocalStorage(content, title, true); // Mark as unsaved since view preference changed
+      setHasUnsavedChanges(true);
+      toast('Press Save button to save view preference to server', { duration: 4000 });
     }
-  };
-  const handleLanguageChange = (language: string) => {
+  };  const handleLanguageChange = (language: string) => {
     // Set typing protection to prevent external updates from overriding this change
     setIsTyping(true);
     setLastUserEdit(Date.now());
@@ -686,46 +564,11 @@ export default function NotePage() {
     setCodeLanguage(language);
     toast.success(`Code language set to ${language}`);
     
-    // CRITICAL FIX: Save the language preference change IMMEDIATELY to Firestore
-    // This prevents Firestore from reverting the change back to the old preference
-    if (isInitialized && user && noteId) {
-      console.log('💾 Immediately saving language preference change:', language);
-      
-      // Cancel any pending debounced save to avoid conflicts
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-      
-      // Save immediately with the new language preference
-      const noteRef = doc(db, 'notes', noteId);
-      const noteData: Record<string, unknown> = {
-        id: noteId,
-        content: content,
-        title: title.trim() || 'Untitled Note',
-        updatedAt: serverTimestamp(),
-        lastEditedBy: user.uid,
-        collaborators: note?.collaborators?.includes(user.uid) 
-          ? note.collaborators 
-          : [...(note?.collaborators || []), user.uid],
-        isCodeView: isCodeView,
-        codeLanguage: language, // Immediately save the new language preference
-      };
-
-      // For new notes, also add createdAt
-      if (!note) {
-        noteData.createdAt = serverTimestamp();
-      }
-
-      setDoc(noteRef, noteData, { merge: true })
-        .then(() => {
-          console.log('✅ Language preference saved immediately to Firestore');
-          firebaseTracker.trackWrite();
-          saveToLocalStorage(content, title.trim() || 'Untitled Note');
-        })
-        .catch((error) => {
-          console.error('❌ Failed to save language preference:', error);
-          toast.error('Failed to save language preference');
-        });
+    // Save to localStorage only - no automatic Firebase save
+    if (isInitialized) {
+      saveToLocalStorage(content, title, true); // Mark as unsaved since language preference changed
+      setHasUnsavedChanges(true);
+      toast('Press Save button to save language preference to server', { duration: 4000 });
     }
   };const downloadNote = (format: 'txt' | 'md' | 'json' | 'code') => {
     const noteData = {
@@ -803,7 +646,6 @@ export default function NotePage() {
     
     toast.success(`Note downloaded as ${format === 'code' ? `${codeLanguage} file` : format.toUpperCase()}`);
   };
-
   const copyFormattedContent = async (format: 'md' | 'json') => {
     let formattedContent = '';
     
@@ -830,8 +672,23 @@ export default function NotePage() {
     } catch (err) {
       console.error('Failed to copy formatted content:', err);
       toast.error('Failed to copy content');
+    }  };
+    // Get note expiry information with better logic for active editing
+  const noteExpiryInfo = useMemo(() => {
+    if (!note?.updatedAt) return null;
+    
+    // If user has unsaved changes, consider the note as "active" and use current time
+    // for expiry calculation to prevent the warning from showing during active editing
+    if (hasUnsavedChanges) {
+      // Use current time as if the note was just updated
+      return NoteCleanup.getNoteExpiryInfo(new Date());
     }
-  };if (isLoading) {
+    
+    // Otherwise use the actual last saved time
+    return NoteCleanup.getNoteExpiryInfo(note.updatedAt);
+  }, [note?.updatedAt, hasUnsavedChanges]);
+
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -890,13 +747,19 @@ export default function NotePage() {
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              {/* Status indicators */}
+            <div className="flex items-center space-x-2">              {/* Status indicators */}
               <div className="flex items-center space-x-3 text-sm text-gray-500">
                 {!isOnline && (
                   <div className="flex items-center space-x-1 text-red-500">
                     <AlertCircle className="h-4 w-4" />
                     <span className="hidden sm:inline">Offline</span>
+                  </div>
+                )}
+                
+                {hasUnsavedChanges && (
+                  <div className="flex items-center space-x-1 text-orange-500">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="hidden sm:inline">Unsaved changes</span>
                   </div>
                 )}
                 
@@ -907,7 +770,7 @@ export default function NotePage() {
                   </div>
                 )}
                 
-                {lastSaved && !isSaving && (
+                {lastSaved && !isSaving && !hasUnsavedChanges && (
                   <div className="flex items-center space-x-1">
                     <Clock className="h-4 w-4" />
                     <span className="hidden sm:inline">
@@ -915,7 +778,7 @@ export default function NotePage() {
                     </span>
                   </div>
                 )}
-              </div>              {/* Action buttons */}
+              </div>{/* Action buttons */}
               <div className="flex items-center space-x-2">
                 {/* Download dropdown */}
                 <div className="relative group">
@@ -972,14 +835,26 @@ export default function NotePage() {
                       <span>JSON format</span>
                     </button>
                   </div>
-                </div>
-
-                <button
+                </div>                <button
                   onClick={manualSave}
                   disabled={isSaving}
-                  className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  className={`px-3 py-1 text-sm ${
+                    hasUnsavedChanges 
+                      ? 'bg-orange-600 hover:bg-orange-700 animate-pulse' 
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  } text-white rounded transition-colors disabled:opacity-50 flex items-center space-x-1`}
                 >
-                  Save
+                  {isSaving ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      <span>{hasUnsavedChanges ? 'Save*' : 'Save'}</span>
+                    </>
+                  )}
                 </button>
                 
                 <button
@@ -1095,8 +970,8 @@ export default function NotePage() {
                     // Mark timestamp of user edit to prevent external updates from overriding
                     setLastUserEdit(Date.now());
                     if (isInitialized) {
-                      saveToLocalStorage(newContent, title);
-                      debouncedSave(newContent, title);
+                      saveToLocalStorage(newContent, title, true); // Mark as unsaved
+                      setHasUnsavedChanges(true);
                     }
                   }}
                   onBlur={handleBlurSave}
@@ -1137,6 +1012,29 @@ export default function NotePage() {
           </div>
         </div>        {/* Info section */}
         <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Note expiry warning */}          {noteExpiryInfo && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-center space-x-2 mb-2">
+                <Clock className="h-5 w-5 text-red-600" />
+                <h3 className="font-semibold text-red-900">
+                  Note Expiry
+                </h3>
+              </div>
+              <p className="text-sm text-red-700">
+                {noteExpiryInfo.isExpired 
+                  ? `This note has expired and will be deleted automatically.`
+                  : noteExpiryInfo.daysUntilExpiry <= 3
+                  ? `This note will be deleted in ${noteExpiryInfo.daysUntilExpiry} day${noteExpiryInfo.daysUntilExpiry !== 1 ? 's' : ''}.`
+                  : `This note will be automatically deleted in ${noteExpiryInfo.daysUntilExpiry} days.`
+                }
+                <br />
+                <span className="text-xs opacity-75">
+                  Notes are deleted after 2 weeks of inactivity to save server resources.
+                </span>
+              </p>
+            </div>
+          )}
+
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <Share2 className="h-5 w-5 text-blue-600" />
@@ -1155,18 +1053,9 @@ export default function NotePage() {
               >
                 <Copy className="h-4 w-4" />
               </button>
-            </div>
-          </div>
-
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex items-center space-x-2 mb-2">
-              <Users className="h-5 w-5 text-green-600" />
-              <h3 className="font-semibold text-green-900">Collaboration</h3>
-            </div>            <p className="text-green-700 text-sm">
-              {note?.collaborators?.length || 0} people have edited this note.
-              Changes are saved automatically when you stop typing or click away.
-            </p>
-          </div>          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            </div>          </div>
+          
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
               <Code className="h-5 w-5 text-purple-600" />
               <h3 className="font-semibold text-purple-900">Code Editor</h3>
