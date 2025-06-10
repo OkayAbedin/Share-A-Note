@@ -1,4 +1,4 @@
-# Share-A-Note - Share Notes Instantly
+# <img src="public/apple-icon.svg" alt="Share-A-Note" width="32" height="32" align="center"> Share-A-Note - Share Notes Instantly
 
 A modern, privacy-focused collaborative note-sharing application built with Next.js 15, Firebase, and TypeScript. Create and share notes with custom URLs - no registration required!
 
