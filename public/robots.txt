@@ -22,5 +22,5 @@ User-agent: Bingbot
 Allow: /
 Disallow: /[a-zA-Z0-9]*$
 
-# Sitemap (if you create one in the future)
-# Sitemap: https://shareanote.vercel.app/sitemap.xml
+# Sitemap
+Sitemap: https://shareanote.vercel.app/sitemap.xml
