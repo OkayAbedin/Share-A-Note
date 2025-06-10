@@ -23,7 +23,7 @@ export default function Home() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <FileText className="h-8 w-8 text-blue-600" />
+              <img src="/apple-icon.svg" alt="Share-A-Note" className="h-8 w-8" />
               <h1 className="text-2xl font-bold text-gray-900">Share-A-Note</h1>
             </div>
             <button

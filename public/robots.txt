@@ -1,0 +1,26 @@
+# robots.txt for Share-A-Note
+# https://shareanote.vercel.app
+
+User-agent: *
+Allow: /
+
+# Allow crawling of the homepage and static assets
+Allow: /favicon.ico
+Allow: /manifest.json
+Allow: /_next/static/
+
+# Disallow crawling of individual note URLs to protect user privacy
+Disallow: /[a-zA-Z0-9]*$
+Disallow: /*?*
+
+# Allow common crawlers
+User-agent: Googlebot
+Allow: /
+Disallow: /[a-zA-Z0-9]*$
+
+User-agent: Bingbot
+Allow: /
+Disallow: /[a-zA-Z0-9]*$
+
+# Sitemap (if you create one in the future)
+# Sitemap: https://shareanote.vercel.app/sitemap.xml

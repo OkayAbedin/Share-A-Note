@@ -19,7 +19,13 @@ export const metadata: Metadata = {
   authors: [{ name: "Share-A-Note" }],
   creator: "Share-A-Note",
   publisher: "Share-A-Note",
-  robots: "index, follow",
+  robots: "index, follow",  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" }
+    ],
+    apple: { url: "/apple-icon.svg", sizes: "180x180" }
+  },
+  manifest: "/manifest.json",
   openGraph: {
     title: "Share-A-Note - Share Notes Instantly",
     description: "Create and share collaborative notes with custom URLs. No account required.",

@@ -1,0 +1,27 @@
+{
+  "name": "Share-A-Note",
+  "short_name": "ShareNote",
+  "description": "Share notes instantly with custom URLs - no registration required!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#3B82F6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "16x16 32x32 48x48",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/apple-icon.svg",
+      "sizes": "180x180",
+      "type": "image/svg+xml",
+      "purpose": "apple-touch-icon"
+    }
+  ],
+  "categories": ["productivity", "utilities", "social"],
+  "lang": "en-US",
+  "scope": "/",
+  "id": "share-a-note-app"
+}
