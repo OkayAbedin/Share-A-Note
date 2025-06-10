@@ -540,12 +540,10 @@ export default function NotePage() {
     
     setIsCodeView(newCodeView);
     toast.success(newCodeView ? 'Switched to code view' : 'Switched to plain text view');
-    
-    // Save to localStorage only - no automatic Firebase save
+      // Save to localStorage only - no automatic Firebase save
     if (isInitialized) {
       saveToLocalStorage(content, title, true); // Mark as unsaved since view preference changed
       setHasUnsavedChanges(true);
-      toast('Press Save button to save view preference to server', { duration: 4000 });
     }
   };  const handleLanguageChange = (language: string) => {
     // Set typing protection to prevent external updates from overriding this change
@@ -564,12 +562,10 @@ export default function NotePage() {
     
     setCodeLanguage(language);
     toast.success(`Code language set to ${language}`);
-    
-    // Save to localStorage only - no automatic Firebase save
+      // Save to localStorage only - no automatic Firebase save
     if (isInitialized) {
       saveToLocalStorage(content, title, true); // Mark as unsaved since language preference changed
       setHasUnsavedChanges(true);
-      toast('Press Save button to save language preference to server', { duration: 4000 });
     }
   };const downloadNote = (format: 'txt' | 'md' | 'json' | 'code') => {
     const noteData = {
