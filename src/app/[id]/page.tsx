@@ -675,15 +675,12 @@ export default function NotePage() {
       toast.error('Failed to copy content');
     }  };  // Get note expiry information - always show based on last save time
   const noteExpiryInfo = useMemo(() => {
-    // If there's no note data yet, we can't show expiry info
-    if (!note) return null;
+    // Use current timestamp as fallback if no note data exists
+    // This ensures expiry info always shows, even for new notes
+    const timestamp = note?.updatedAt || note?.createdAt || new Date();
     
-    // If note exists but doesn't have an updatedAt timestamp, create a fallback
-    // This handles new notes or edge cases
-    const timestamp = note.updatedAt || note.createdAt || new Date();
-    
-    // Always calculate expiry info based on the actual timestamp from the database,
-    // regardless of editing or saving status
+    // Always calculate expiry info based on the timestamp,
+    // regardless of editing, saving status, or note existence
     return NoteCleanup.getNoteExpiryInfo(timestamp);
   }, [note]);
 
@@ -1011,28 +1008,27 @@ export default function NotePage() {
           </div>
         </div>        {/* Info section */}
         <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Note expiry warning - always show if note exists */}
-          {note && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center space-x-2 mb-2">
-                <Clock className="h-5 w-5 text-red-600" />
-                <h3 className="font-semibold text-red-900">
-                  Note Expiry
-                </h3>
-              </div>
-              <p className="text-sm text-red-700">                {noteExpiryInfo?.isExpired 
-                  ? `This note has expired and will be deleted automatically.`
-                  : noteExpiryInfo && noteExpiryInfo.daysUntilExpiry !== undefined && noteExpiryInfo.daysUntilExpiry <= 3
-                  ? `This note will be deleted in ${noteExpiryInfo.daysUntilExpiry} day${noteExpiryInfo.daysUntilExpiry !== 1 ? 's' : ''}.`
-                  : `This note will be automatically deleted in ${noteExpiryInfo?.daysUntilExpiry ?? 14} days.`
-                }
-                <br />
-                <span className="text-xs opacity-75">
-                  Notes are deleted after 2 weeks of inactivity to save server resources.
-                </span>
-              </p>
+          {/* Note expiry warning - always show regardless of note state */}
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Clock className="h-5 w-5 text-red-600" />
+              <h3 className="font-semibold text-red-900">
+                Note Expiry
+              </h3>
             </div>
-          )}
+            <p className="text-sm text-red-700">
+              {noteExpiryInfo?.isExpired 
+                ? `This note has expired and will be deleted automatically.`
+                : noteExpiryInfo && noteExpiryInfo.daysUntilExpiry !== undefined && noteExpiryInfo.daysUntilExpiry <= 3
+                ? `This note will be deleted in ${noteExpiryInfo.daysUntilExpiry} day${noteExpiryInfo.daysUntilExpiry !== 1 ? 's' : ''}.`
+                : `This note will be automatically deleted in ${noteExpiryInfo?.daysUntilExpiry ?? 14} days.`
+              }
+              <br />
+              <span className="text-xs opacity-75">
+                Notes are deleted after 2 weeks of inactivity to save server resources.
+              </span>
+            </p>
+          </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
