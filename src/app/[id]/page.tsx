@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { signInAnonymously, User } from 'firebase/auth';
@@ -37,14 +37,17 @@ export default function NotePage() {
   const [hasError, setHasError] = useState(false);  const [isInitialized, setIsInitialized] = useState(false); // Track if note has been loaded from Firestore
   const [isCodeView, setIsCodeView] = useState(false); // Track code formatting view
   const [codeLanguage, setCodeLanguage] = useState('javascript'); // Default code language
+  const [lastUserEdit, setLastUserEdit] = useState<number>(0); // Timestamp of last user edit
+  const [isTyping, setIsTyping] = useState(false); // Track if user is actively typing
+  const [cursorPosition, setCursorPosition] = useState<{start: number, end: number} | null>(null); // Preserve cursor position
   
   // Local storage for offline backup and reduced Firebase reads
   const [localBackup, setLocalBackup] = useState<{content: string, title: string, timestamp: number} | null>(null);
-  
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  // Local storage utilities for offline backup and Firebase optimization
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const externalUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);// Local storage utilities for offline backup and Firebase optimization
   const saveToLocalStorage = (content: string, title: string) => {
     try {
       const backup = {
@@ -59,6 +62,45 @@ export default function NotePage() {
     } catch (error) {
       console.warn('Failed to save to localStorage:', error);
     }
+  };
+  // Function to preserve cursor position when content updates
+  const preserveCursorPosition = () => {
+    if (contentRef.current) {
+      setCursorPosition({
+        start: contentRef.current.selectionStart || 0,
+        end: contentRef.current.selectionEnd || 0
+      });
+    }
+    if (titleRef.current) {
+      setCursorPosition({
+        start: titleRef.current.selectionStart || 0,
+        end: titleRef.current.selectionEnd || 0
+      });
+    }
+  };
+  // Function to restore cursor position after content updates
+  const restoreCursorPosition = () => {
+    if (cursorPosition && contentRef.current && document.activeElement === contentRef.current) {
+      contentRef.current.setSelectionRange(cursorPosition.start, cursorPosition.end);
+    }
+    if (cursorPosition && titleRef.current && document.activeElement === titleRef.current) {
+      titleRef.current.setSelectionRange(cursorPosition.start, cursorPosition.end);
+    }
+  };
+
+  // Debounced external update function to prevent rapid updates
+  const debouncedExternalUpdate = (newContent: string, newTitle: string) => {
+    if (externalUpdateTimeoutRef.current) {
+      clearTimeout(externalUpdateTimeoutRef.current);
+    }
+    
+    externalUpdateTimeoutRef.current = setTimeout(() => {
+      console.log('🔄 Applying debounced external update');
+      preserveCursorPosition();
+      setContent(newContent);
+      setTitle(newTitle);
+      setTimeout(restoreCursorPosition, 0);
+    }, 100); // Small delay to batch rapid updates
   };
 
   const loadFromLocalStorage = () => {
@@ -162,30 +204,60 @@ export default function NotePage() {
               console.log('📥 Loaded code language preference:', noteData.codeLanguage);
             }
             
-            setIsInitialized(true);
-          } else {
+            setIsInitialized(true);          } else {
             // Only update if the content is significantly different (avoid minor changes from real-time collaboration)
             const contentChanged = noteData.content !== content;
             const titleChanged = noteData.title !== title;
             
-            if (contentChanged || titleChanged) {
-              console.log('📥 Content changed from external source, updating:', {
+            // AGGRESSIVE TYPING PROTECTION - Multiple layers of protection
+            const isUserTyping = document.activeElement === contentRef.current || 
+                                document.activeElement === titleRef.current ||
+                                document.activeElement?.tagName === 'TEXTAREA' ||
+                                document.activeElement?.tagName === 'INPUT';
+            
+            // Extended protection window - 5 seconds after last edit
+            const timeSinceLastEdit = Date.now() - lastUserEdit;
+            const isTooSoonAfterEdit = timeSinceLastEdit < 5000;
+            
+            // Additional protection - check if currently in typing state
+            const isCurrentlyTyping = isTyping;
+            
+            // Only update if ALL protection conditions are false
+            const shouldAllowUpdate = !isUserTyping && !isTooSoonAfterEdit && !isCurrentlyTyping;
+              if ((contentChanged || titleChanged) && shouldAllowUpdate) {
+              console.log('📥 Content changed from external source, scheduling debounced update:', {
                 contentChanged,
                 titleChanged,
                 newContentLength: noteData.content?.length || 0,
-                currentContentLength: content.length
-              });              setContent(noteData.content || '');
-              setTitle(noteData.title || '');
-            }
+                currentContentLength: content.length,
+                userTyping: isUserTyping,
+                timeSinceLastEdit: timeSinceLastEdit + 'ms',
+                currentlyTyping: isCurrentlyTyping
+              });
+              
+              // Use debounced update instead of immediate update
+              debouncedExternalUpdate(noteData.content || '', noteData.title || '');
+            } else if ((contentChanged || titleChanged) && !shouldAllowUpdate) {
+              console.log('🚫 Skipping external update - user is actively typing', {
+                userTyping: isUserTyping,
+                isTooSoonAfterEdit: isTooSoonAfterEdit,
+                isCurrentlyTyping: isCurrentlyTyping,
+                timeSinceLastEdit: timeSinceLastEdit + 'ms'
+              });            }
             
-            // Update code view preferences if they changed
-            if (noteData.isCodeView !== undefined && noteData.isCodeView !== isCodeView) {
+            // Update code view preferences if they changed - but only if user is not typing
+            if ((noteData.isCodeView !== undefined && noteData.isCodeView !== isCodeView) && shouldAllowUpdate) {
               setIsCodeView(noteData.isCodeView);
               console.log('📥 Updated code view preference from external source:', noteData.isCodeView);
+            } else if ((noteData.isCodeView !== undefined && noteData.isCodeView !== isCodeView) && !shouldAllowUpdate) {
+              console.log('🚫 Skipping code view update - user is actively typing');
             }
-            if (noteData.codeLanguage && noteData.codeLanguage !== codeLanguage) {
+            
+            if (noteData.codeLanguage && noteData.codeLanguage !== codeLanguage && shouldAllowUpdate) {
               setCodeLanguage(noteData.codeLanguage);
               console.log('📥 Updated code language preference from external source:', noteData.codeLanguage);
+            } else if (noteData.codeLanguage && noteData.codeLanguage !== codeLanguage && !shouldAllowUpdate) {
+              console.log('🚫 Skipping code language update - user is actively typing');
             }
           }
           console.log('Note loaded successfully:', noteData);
@@ -266,11 +338,15 @@ export default function NotePage() {
           .then(() => console.log('Saved before unload'))
           .catch(err => console.error('Failed to save before unload:', err));
       }
-    };
-    
-    const handleBeforeUnload = () => {
+    };    const handleBeforeUnload = () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
+      }
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      if (externalUpdateTimeoutRef.current) {
+        clearTimeout(externalUpdateTimeoutRef.current);
       }
       
       // Only save if initialized and there are actual changes
@@ -446,7 +522,7 @@ export default function NotePage() {
     }
     // Save immediately when user clicks away, but don't show toast
     saveNote(content, title, false);
-  };  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  };  const handleContentChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
     console.log('📝 Content changed:', { 
       length: newContent.length, 
@@ -455,8 +531,24 @@ export default function NotePage() {
       isInitialized
     });
     
+    // Set typing state to prevent external updates
+    setIsTyping(true);
+    
+    // Clear any existing typing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Set timeout to clear typing state after user stops typing
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+    }, 1000); // 1 second after stopping typing
+    
     // Update state
     setContent(newContent);
+    
+    // Mark timestamp of user edit to prevent external updates from overriding
+    setLastUserEdit(Date.now());
     
     // OPTIMIZATION: Always save to localStorage immediately for offline access
     if (isInitialized) {
@@ -465,7 +557,7 @@ export default function NotePage() {
     } else {
       console.log('🚫 Skipped content save - note not initialized');
     }
-  };  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  }, [note, noteId, isInitialized, title, saveToLocalStorage, debouncedSave]);  const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value; // Allow empty titles during editing
     console.log('📝 Title changed:', { 
       newTitle, 
@@ -474,8 +566,24 @@ export default function NotePage() {
       isInitialized
     });
     
+    // Set typing state to prevent external updates
+    setIsTyping(true);
+    
+    // Clear any existing typing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Set timeout to clear typing state after user stops typing
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+    }, 1000); // 1 second after stopping typing
+    
     // Update state
     setTitle(newTitle);
+    
+    // Mark timestamp of user edit to prevent external updates from overriding
+    setLastUserEdit(Date.now());
     
     // OPTIMIZATION: Always save to localStorage immediately for offline access
     if (isInitialized) {
@@ -484,7 +592,7 @@ export default function NotePage() {
     } else {
       console.log('🚫 Skipped title save - note not initialized');
     }
-  };
+  }, [note, noteId, isInitialized, content, saveToLocalStorage, debouncedSave]);
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -498,25 +606,126 @@ export default function NotePage() {
       clearTimeout(saveTimeoutRef.current);
     }
     saveNote(content, title, true); // Show toast for manual saves
-  };
-  const toggleCodeView = () => {
+  };  const toggleCodeView = () => {
     const newCodeView = !isCodeView;
+    
+    // Set typing protection to prevent external updates from overriding this change
+    setIsTyping(true);
+    setLastUserEdit(Date.now());
+    
+    // Clear any existing typing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Set timeout to clear typing state after change is made
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+    }, 2000); // Extended timeout for UI changes
+    
     setIsCodeView(newCodeView);
     toast.success(newCodeView ? 'Switched to code view' : 'Switched to plain text view');
     
-    // Save the preference change immediately if initialized
-    if (isInitialized) {
-      debouncedSave(content, title);
+    // CRITICAL FIX: Save the view preference change IMMEDIATELY to Firestore
+    // This prevents Firestore from reverting the change back to the old preference
+    if (isInitialized && user && noteId) {
+      console.log('💾 Immediately saving code view preference change:', newCodeView);
+      
+      // Cancel any pending debounced save to avoid conflicts
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      
+      // Save immediately with the new view preference
+      const noteRef = doc(db, 'notes', noteId);
+      const noteData: Record<string, unknown> = {
+        id: noteId,
+        content: content,
+        title: title.trim() || 'Untitled Note',
+        updatedAt: serverTimestamp(),
+        lastEditedBy: user.uid,
+        collaborators: note?.collaborators?.includes(user.uid) 
+          ? note.collaborators 
+          : [...(note?.collaborators || []), user.uid],
+        isCodeView: newCodeView, // Immediately save the new code view preference
+        codeLanguage: codeLanguage,
+      };
+
+      // For new notes, also add createdAt
+      if (!note) {
+        noteData.createdAt = serverTimestamp();
+      }
+
+      setDoc(noteRef, noteData, { merge: true })
+        .then(() => {
+          console.log('✅ Code view preference saved immediately to Firestore');
+          firebaseTracker.trackWrite();
+          saveToLocalStorage(content, title.trim() || 'Untitled Note');
+        })
+        .catch((error) => {
+          console.error('❌ Failed to save code view preference:', error);
+          toast.error('Failed to save view preference');
+        });
     }
   };
-
   const handleLanguageChange = (language: string) => {
+    // Set typing protection to prevent external updates from overriding this change
+    setIsTyping(true);
+    setLastUserEdit(Date.now());
+    
+    // Clear any existing typing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Set timeout to clear typing state after change is made
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+    }, 2000); // Extended timeout for UI changes
+    
     setCodeLanguage(language);
     toast.success(`Code language set to ${language}`);
     
-    // Save the language preference change immediately if initialized
-    if (isInitialized) {
-      debouncedSave(content, title);
+    // CRITICAL FIX: Save the language preference change IMMEDIATELY to Firestore
+    // This prevents Firestore from reverting the change back to the old preference
+    if (isInitialized && user && noteId) {
+      console.log('💾 Immediately saving language preference change:', language);
+      
+      // Cancel any pending debounced save to avoid conflicts
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+      
+      // Save immediately with the new language preference
+      const noteRef = doc(db, 'notes', noteId);
+      const noteData: Record<string, unknown> = {
+        id: noteId,
+        content: content,
+        title: title.trim() || 'Untitled Note',
+        updatedAt: serverTimestamp(),
+        lastEditedBy: user.uid,
+        collaborators: note?.collaborators?.includes(user.uid) 
+          ? note.collaborators 
+          : [...(note?.collaborators || []), user.uid],
+        isCodeView: isCodeView,
+        codeLanguage: language, // Immediately save the new language preference
+      };
+
+      // For new notes, also add createdAt
+      if (!note) {
+        noteData.createdAt = serverTimestamp();
+      }
+
+      setDoc(noteRef, noteData, { merge: true })
+        .then(() => {
+          console.log('✅ Language preference saved immediately to Firestore');
+          firebaseTracker.trackWrite();
+          saveToLocalStorage(content, title.trim() || 'Untitled Note');
+        })
+        .catch((error) => {
+          console.error('❌ Failed to save language preference:', error);
+          toast.error('Failed to save language preference');
+        });
     }
   };const downloadNote = (format: 'txt' | 'md' | 'json' | 'code') => {
     const noteData = {
@@ -789,13 +998,25 @@ export default function NotePage() {
       <main className="container mx-auto px-4 py-6 max-w-4xl">
         <div className="bg-white rounded-lg shadow-sm border">          {/* Title input */}
           <div className="border-b p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">              {/* Title input */}
-              <input
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">              {/* Title input */}              <input
                 ref={titleRef}
                 type="text"
                 value={title}
                 onChange={handleTitleChange}
                 onBlur={handleBlurSave}
+                onKeyDown={() => {
+                  setIsTyping(true);
+                  setLastUserEdit(Date.now());
+                }}
+                onKeyUp={() => {
+                  // Clear typing timeout and set new one
+                  if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current);
+                  }
+                  typingTimeoutRef.current = setTimeout(() => {
+                    setIsTyping(false);
+                  }, 1000);
+                }}
                 placeholder="Enter note title..."
                 className="w-full sm:flex-1 text-lg sm:text-2xl font-bold text-gray-900 placeholder-gray-400 border-none outline-none bg-transparent"
               />
@@ -854,11 +1075,27 @@ export default function NotePage() {
                 <CodeEditor
                   value={content}
                   language={codeLanguage}
-                  placeholder={`Start typing your ${codeLanguage} code here...`}
-                  onChange={(evn) => {
+                  placeholder={`Start typing your ${codeLanguage} code here...`}                  onChange={(evn) => {
                     const newContent = evn.target.value;
+                    
+                    // Set typing state to prevent external updates
+                    setIsTyping(true);
+                    
+                    // Clear any existing typing timeout
+                    if (typingTimeoutRef.current) {
+                      clearTimeout(typingTimeoutRef.current);
+                    }
+                    
+                    // Set timeout to clear typing state after user stops typing
+                    typingTimeoutRef.current = setTimeout(() => {
+                      setIsTyping(false);
+                    }, 1000); // 1 second after stopping typing
+                    
                     setContent(newContent);
+                    // Mark timestamp of user edit to prevent external updates from overriding
+                    setLastUserEdit(Date.now());
                     if (isInitialized) {
+                      saveToLocalStorage(newContent, title);
                       debouncedSave(newContent, title);
                     }
                   }}
@@ -874,12 +1111,24 @@ export default function NotePage() {
                   }}
                 />
               </div>
-            ) : (
-              <textarea
+            ) : (              <textarea
                 ref={contentRef}
                 value={content}
                 onChange={handleContentChange}
                 onBlur={handleBlurSave}
+                onKeyDown={() => {
+                  setIsTyping(true);
+                  setLastUserEdit(Date.now());
+                }}
+                onKeyUp={() => {
+                  // Clear typing timeout and set new one
+                  if (typingTimeoutRef.current) {
+                    clearTimeout(typingTimeoutRef.current);
+                  }
+                  typingTimeoutRef.current = setTimeout(() => {
+                    setIsTyping(false);
+                  }, 1000);
+                }}
                 placeholder="Start typing your note here... Anyone with this link can edit this note in real-time!"
                 className="w-full h-96 text-gray-700 placeholder-gray-400 border-none outline-none resize-none bg-transparent leading-relaxed"
                 style={{ minHeight: '500px' }}
