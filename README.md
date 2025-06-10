@@ -80,6 +80,8 @@ A modern, privacy-focused collaborative note-sharing application built with Next
 
    Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+> **Note**: This project has been renamed from "NoteKeeper" to "Share-A-Note" for better branding.
+
 ## 📁 Project Structure
 
 ```
