@@ -38,7 +38,7 @@ A modern, privacy-focused collaborative note-sharing application built with Next
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/OkayAbedin/Share-A-Note.git
    cd share-a-note
    ```
 
