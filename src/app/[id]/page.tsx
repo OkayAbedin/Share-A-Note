@@ -673,20 +673,14 @@ export default function NotePage() {
       console.error('Failed to copy formatted content:', err);
       toast.error('Failed to copy content');
     }  };
-    // Get note expiry information with better logic for active editing
+  // Get note expiry information - always show based on last save time
   const noteExpiryInfo = useMemo(() => {
     if (!note?.updatedAt) return null;
     
-    // If user has unsaved changes, consider the note as "active" and use current time
-    // for expiry calculation to prevent the warning from showing during active editing
-    if (hasUnsavedChanges) {
-      // Use current time as if the note was just updated
-      return NoteCleanup.getNoteExpiryInfo(new Date());
-    }
-    
-    // Otherwise use the actual last saved time
+    // Always use the actual last saved time, regardless of editing status
+    // This ensures the expiry notice remains visible at all times
     return NoteCleanup.getNoteExpiryInfo(note.updatedAt);
-  }, [note?.updatedAt, hasUnsavedChanges]);
+  }, [note?.updatedAt]);
 
   if (isLoading) {
     return (
