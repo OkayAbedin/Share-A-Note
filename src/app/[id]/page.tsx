@@ -680,39 +680,41 @@ export default function NotePage() {
     return NoteCleanup.getNoteExpiryInfo(timestamp);
   }, [note]);
 
+  // Update loading screen
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-dark flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+          <p className="text-zinc-300">
             {!user ? 'Authenticating...' : 'Loading note...'}
           </p>
-          <p className="text-sm text-gray-400 mt-2">Note ID: {noteId}</p>
+          <p className="text-sm text-zinc-500 mt-2">Note ID: {noteId}</p>
         </div>
       </div>
     );
   }
 
+  // Update error screen
   if (hasError) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-dark flex items-center justify-center">
         <div className="text-center max-w-md mx-auto p-6">
-          <div className="text-red-500 mb-4">
+          <div className="text-red-400 mb-4">
             <AlertCircle className="h-12 w-12 mx-auto mb-2" />
             <h2 className="text-xl font-semibold">Connection Error</h2>
           </div>
-          <p className="text-gray-600 mb-4">
+          <p className="text-zinc-400 mb-4">
             Failed to connect to the database. This could be due to:
           </p>
-          <ul className="text-sm text-gray-500 text-left mb-6">
+          <ul className="text-sm text-zinc-500 text-left mb-6">
             <li>• Network connection issues</li>
             <li>• Firebase configuration problems</li>
             <li>• Firestore rules blocking access</li>
           </ul>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            className="px-4 py-2 bg-blue-600/90 text-white rounded hover:bg-blue-600 transition-colors backdrop-blur-sm border border-blue-500/20"
           >
             Refresh Page
           </button>
@@ -720,42 +722,46 @@ export default function NotePage() {
       </div>
     );
   }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-dark">
       <Toaster position="top-right" />
       
       {/* Firebase Usage Display - Development Only */}
       <FirebaseUsageDisplay />
       
       {/* Header */}
-      <header className="bg-white border-b shadow-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3">          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">              <div className="flex items-center space-x-2">
+      <header className="glass-strong border-b border-zinc-800/50 sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
                 <img src="/apple-icon.svg" alt="Share-A-Note" className="h-6 w-6" />
-                <span className="text-lg font-semibold text-gray-900">
+                <span className="text-lg font-semibold text-zinc-100">
                   {noteId}
                 </span>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">              {/* Status indicators */}
-              <div className="flex items-center space-x-3 text-sm text-gray-500">
+            <div className="flex items-center space-x-2">
+              {/* Status indicators */}
+              <div className="flex items-center space-x-3 text-sm text-zinc-400">
                 {!isOnline && (
-                  <div className="flex items-center space-x-1 text-red-500">
+                  <div className="flex items-center space-x-1 text-red-400">
                     <AlertCircle className="h-4 w-4" />
                     <span className="hidden sm:inline">Offline</span>
                   </div>
                 )}
                 
                 {hasUnsavedChanges && (
-                  <div className="flex items-center space-x-1 text-orange-500">
+                  <div className="flex items-center space-x-1 text-orange-400">
                     <AlertCircle className="h-4 w-4" />
                     <span className="hidden sm:inline">Unsaved changes</span>
                   </div>
                 )}
                 
                 {isSaving && (
-                  <div className="flex items-center space-x-1 text-blue-500">
+                  <div className="flex items-center space-x-1 text-blue-400">
                     <Save className="h-4 w-4 animate-pulse" />
                     <span className="hidden sm:inline">Saving...</span>
                   </div>
@@ -769,26 +775,30 @@ export default function NotePage() {
                     </span>
                   </div>
                 )}
-              </div>{/* Action buttons */}
+              </div>
+
+              {/* Action buttons */}
               <div className="flex items-center space-x-2">
                 {/* Download dropdown */}
                 <div className="relative group">
-                  <button className="flex items-center space-x-1 px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors">
+                  <button className="flex items-center space-x-1 px-3 py-1 text-sm bg-emerald-600/90 text-white rounded hover:bg-emerald-600 transition-all duration-200 backdrop-blur-sm border border-emerald-500/20">
                     <Download className="h-4 w-4" />
                     <span className="hidden sm:inline">Download</span>
-                  </button>{/* Dropdown menu */}
-                  <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-                    <div className="px-3 py-2 text-xs font-semibold text-gray-500 border-b">Download</div>
+                  </button>
+
+                  {/* Dropdown menu */}
+                  <div className="absolute right-0 mt-1 w-48 glass border border-zinc-800/50 rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                    <div className="px-3 py-2 text-xs font-semibold text-zinc-400 border-b border-zinc-800/50">Download</div>
                     <button
                       onClick={() => downloadNote('txt')}
-                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                      className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800/50 flex items-center space-x-2 transition-colors"
                     >
                       <FileDown className="h-3 w-3" />
                       <span>Text (.txt)</span>
                     </button>
                     <button
                       onClick={() => downloadNote('md')}
-                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                      className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800/50 flex items-center space-x-2 transition-colors"
                     >
                       <FileDown className="h-3 w-3" />
                       <span>Markdown (.md)</span>
@@ -796,7 +806,7 @@ export default function NotePage() {
                     {isCodeView && (
                       <button
                         onClick={() => downloadNote('code')}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                        className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800/50 flex items-center space-x-2 transition-colors"
                       >
                         <Code className="h-3 w-3" />
                         <span>{codeLanguage} file</span>
@@ -804,36 +814,40 @@ export default function NotePage() {
                     )}
                     <button
                       onClick={() => downloadNote('json')}
-                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                      className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800/50 flex items-center space-x-2 transition-colors"
                     >
                       <FileDown className="h-3 w-3" />
                       <span>JSON (.json)</span>
                     </button>
                     
-                    <div className="px-3 py-2 text-xs font-semibold text-gray-500 border-t border-b">Copy to Clipboard</div>
+                    <div className="px-3 py-2 text-xs font-semibold text-zinc-400 border-t border-b border-zinc-800/50">Copy to Clipboard</div>
                     <button
                       onClick={() => copyFormattedContent('md')}
-                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                      className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800/50 flex items-center space-x-2 transition-colors"
                     >
                       <Copy className="h-3 w-3" />
                       <span>Markdown format</span>
                     </button>
                     <button
                       onClick={() => copyFormattedContent('json')}
-                      className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                      className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800/50 flex items-center space-x-2 transition-colors"
                     >
                       <Copy className="h-3 w-3" />
                       <span>JSON format</span>
                     </button>
                   </div>
-                </div>                <button
+                </div>
+
+                <button
                   onClick={manualSave}
                   disabled={isSaving}
                   className={`px-3 py-1 text-sm ${
                     hasUnsavedChanges 
-                      ? 'bg-orange-600 hover:bg-orange-700 animate-pulse' 
-                      : 'bg-blue-600 hover:bg-blue-700'
-                  } text-white rounded transition-colors disabled:opacity-50 flex items-center space-x-1`}
+                      ? 'bg-orange-600/90 hover:bg-orange-600 animate-pulse' 
+                      : 'bg-blue-600/90 hover:bg-blue-600'
+                  } text-white rounded transition-all duration-200 backdrop-blur-sm border ${
+                    hasUnsavedChanges ? 'border-orange-500/20' : 'border-blue-500/20'
+                  } disabled:opacity-50 flex items-center space-x-1`}
                 >
                   {isSaving ? (
                     <>
@@ -850,10 +864,11 @@ export default function NotePage() {
                 
                 <button
                   onClick={copyToClipboard}
-                  className="flex items-center space-x-1 px-3 py-1 text-sm bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                  className="flex items-center space-x-1 px-3 py-1 text-sm bg-zinc-600/90 text-white rounded hover:bg-zinc-600 transition-all duration-200 backdrop-blur-sm border border-zinc-500/20"
                 >
                   <Copy className="h-4 w-4" />
-                  <span className="hidden sm:inline">Share</span>                </button>
+                  <span className="hidden sm:inline">Share</span>
+                </button>
               </div>
             </div>
           </div>
@@ -862,9 +877,12 @@ export default function NotePage() {
 
       {/* Main content */}
       <main className="container mx-auto px-4 py-6 max-w-4xl">
-        <div className="bg-white rounded-lg shadow-sm border">          {/* Title input */}
-          <div className="border-b p-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">              {/* Title input */}              <input
+        <div className="glass rounded-lg border border-zinc-800/50">
+          {/* Title input */}
+          <div className="border-b border-zinc-800/50 p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              {/* Title input */}
+              <input
                 ref={titleRef}
                 type="text"
                 value={title}
@@ -884,7 +902,7 @@ export default function NotePage() {
                   }, 1000);
                 }}
                 placeholder="Enter note title..."
-                className="w-full sm:flex-1 text-lg sm:text-2xl font-bold text-gray-900 placeholder-gray-400 border-none outline-none bg-transparent"
+                className="w-full sm:flex-1 text-lg sm:text-2xl font-bold text-zinc-100 placeholder-zinc-500 border-none outline-none bg-transparent"
               />
               
               {/* Code/Plain toggle and language selector */}
@@ -892,11 +910,11 @@ export default function NotePage() {
                 {/* Code formatting toggle */}
                 <button
                   onClick={toggleCodeView}
-                  className={`flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 text-sm rounded-lg font-medium transition-colors ${
+                  className={`flex items-center justify-center space-x-2 px-3 sm:px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 ${
                     isCodeView 
-                      ? 'bg-purple-600 text-white hover:bg-purple-700' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                      ? 'bg-purple-600/90 text-white hover:bg-purple-600 border border-purple-500/20' 
+                      : 'bg-zinc-700/50 text-zinc-300 hover:bg-zinc-700 border border-zinc-600/20'
+                  } backdrop-blur-sm`}
                 >
                   <Code className="h-4 w-4" />
                   <span>{isCodeView ? 'Plain Text' : 'Code View'}</span>
@@ -907,33 +925,35 @@ export default function NotePage() {
                   <select
                     value={codeLanguage}
                     onChange={(e) => handleLanguageChange(e.target.value)}
-                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white text-gray-700 w-full sm:min-w-32 sm:w-auto"
+                    className="px-3 py-2 text-sm border border-zinc-600/50 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/50 bg-zinc-800/50 text-zinc-300 w-full sm:min-w-32 sm:w-auto backdrop-blur-sm"
                   >
-                    <option value="javascript" className="text-gray-900 bg-white">JavaScript</option>
-                    <option value="typescript" className="text-gray-900 bg-white">TypeScript</option>
-                    <option value="python" className="text-gray-900 bg-white">Python</option>
-                    <option value="java" className="text-gray-900 bg-white">Java</option>
-                    <option value="cpp" className="text-gray-900 bg-white">C++</option>
-                    <option value="csharp" className="text-gray-900 bg-white">C#</option>
-                    <option value="php" className="text-gray-900 bg-white">PHP</option>
-                    <option value="ruby" className="text-gray-900 bg-white">Ruby</option>
-                    <option value="go" className="text-gray-900 bg-white">Go</option>
-                    <option value="rust" className="text-gray-900 bg-white">Rust</option>
-                    <option value="html" className="text-gray-900 bg-white">HTML</option>
-                    <option value="css" className="text-gray-900 bg-white">CSS</option>
-                    <option value="sql" className="text-gray-900 bg-white">SQL</option>
-                    <option value="json" className="text-gray-900 bg-white">JSON</option>
-                    <option value="xml" className="text-gray-900 bg-white">XML</option>
-                    <option value="yaml" className="text-gray-900 bg-white">YAML</option>
-                    <option value="markdown" className="text-gray-900 bg-white">Markdown</option>
-                    <option value="bash" className="text-gray-900 bg-white">Bash</option>
-                    <option value="powershell" className="text-gray-900 bg-white">PowerShell</option>
-                    <option value="dockerfile" className="text-gray-900 bg-white">Dockerfile</option>
+                    <option value="javascript" className="text-zinc-100 bg-zinc-800">JavaScript</option>
+                    <option value="typescript" className="text-zinc-100 bg-zinc-800">TypeScript</option>
+                    <option value="python" className="text-zinc-100 bg-zinc-800">Python</option>
+                    <option value="java" className="text-zinc-100 bg-zinc-800">Java</option>
+                    <option value="cpp" className="text-zinc-100 bg-zinc-800">C++</option>
+                    <option value="csharp" className="text-zinc-100 bg-zinc-800">C#</option>
+                    <option value="php" className="text-zinc-100 bg-zinc-800">PHP</option>
+                    <option value="ruby" className="text-zinc-100 bg-zinc-800">Ruby</option>
+                    <option value="go" className="text-zinc-100 bg-zinc-800">Go</option>
+                    <option value="rust" className="text-zinc-100 bg-zinc-800">Rust</option>
+                    <option value="html" className="text-zinc-100 bg-zinc-800">HTML</option>
+                    <option value="css" className="text-zinc-100 bg-zinc-800">CSS</option>
+                    <option value="sql" className="text-zinc-100 bg-zinc-800">SQL</option>
+                    <option value="json" className="text-zinc-100 bg-zinc-800">JSON</option>
+                    <option value="xml" className="text-zinc-100 bg-zinc-800">XML</option>
+                    <option value="yaml" className="text-zinc-100 bg-zinc-800">YAML</option>
+                    <option value="markdown" className="text-zinc-100 bg-zinc-800">Markdown</option>
+                    <option value="bash" className="text-zinc-100 bg-zinc-800">Bash</option>
+                    <option value="powershell" className="text-zinc-100 bg-zinc-800">PowerShell</option>
+                    <option value="dockerfile" className="text-zinc-100 bg-zinc-800">Dockerfile</option>
                   </select>
                 )}
               </div>
             </div>
-          </div>{/* Content area */}
+          </div>
+
+          {/* Content area */}
           <div className="p-4">
             {isCodeView ? (
               <div className="space-y-4">
@@ -941,7 +961,8 @@ export default function NotePage() {
                 <CodeEditor
                   value={content}
                   language={codeLanguage}
-                  placeholder={`Start typing your ${codeLanguage} code here...`}                  onChange={(evn) => {
+                  placeholder={`Start typing your ${codeLanguage} code here...`}
+                  onChange={(evn) => {
                     const newContent = evn.target.value;
                     
                     // Set typing state to prevent external updates
@@ -955,29 +976,30 @@ export default function NotePage() {
                     // Set timeout to clear typing state after user stops typing
                     typingTimeoutRef.current = setTimeout(() => {
                       setIsTyping(false);
-                    }, 1000); // 1 second after stopping typing
+                    }, 1000);
                     
                     setContent(newContent);
-                    // Mark timestamp of user edit to prevent external updates from overriding
                     setLastUserEdit(Date.now());
                     if (isInitialized) {
-                      saveToLocalStorage(newContent, title, true); // Mark as unsaved
+                      saveToLocalStorage(newContent, title, true);
                       setHasUnsavedChanges(true);
                     }
                   }}
                   onBlur={handleBlurSave}
-                  padding={16}                  style={{
+                  padding={16}
+                  style={{
                     fontSize: 14,
-                    backgroundColor: "#000000",
-                    color: "#ffffff",
+                    backgroundColor: "#18181b",
+                    color: "#e4e4e7",
                     fontFamily: 'ui-monospace,SFMono-Regular,"SF Mono",Monaco,Consolas,"Liberation Mono","Menlo",monospace',
                     minHeight: '500px',
-                    border: '1px solid #374151',
+                    border: '1px solid rgba(39, 39, 42, 0.5)',
                     borderRadius: '6px'
                   }}
                 />
               </div>
-            ) : (              <textarea
+            ) : (
+              <textarea
                 ref={contentRef}
                 value={content}
                 onChange={handleContentChange}
@@ -996,22 +1018,24 @@ export default function NotePage() {
                   }, 1000);
                 }}
                 placeholder="Start typing your note here... Anyone with this link can edit this note in real-time!"
-                className="w-full h-96 text-gray-700 placeholder-gray-400 border-none outline-none resize-none bg-transparent leading-relaxed"
+                className="w-full h-96 text-zinc-300 placeholder-zinc-500 border-none outline-none resize-none bg-transparent leading-relaxed"
                 style={{ minHeight: '500px' }}
               />
             )}
           </div>
-        </div>        {/* Info section */}
+        </div>
+
+        {/* Info section */}
         <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Note expiry warning - always show regardless of note state */}
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          {/* Note expiry warning */}
+          <div className="glass border border-red-500/20 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
-              <Clock className="h-5 w-5 text-red-600" />
-              <h3 className="font-semibold text-red-900">
+              <Clock className="h-5 w-5 text-red-400" />
+              <h3 className="font-semibold text-red-300">
                 Note Expiry
               </h3>
             </div>
-            <p className="text-sm text-red-700">
+            <p className="text-sm text-red-200">
               {noteExpiryInfo?.isExpired 
                 ? `This note has expired and will be deleted automatically.`
                 : noteExpiryInfo && noteExpiryInfo.daysUntilExpiry !== undefined && noteExpiryInfo.daysUntilExpiry <= 3
@@ -1025,35 +1049,36 @@ export default function NotePage() {
             </p>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="glass border border-blue-500/20 rounded-lg p-4">
             <div className="flex items-center space-x-2 mb-2">
-              <Share2 className="h-5 w-5 text-blue-600" />
-              <h3 className="font-semibold text-blue-900">Share this note</h3>
+              <Share2 className="h-5 w-5 text-blue-400" />
+              <h3 className="font-semibold text-blue-300">Share this note</h3>
             </div>
-            <p className="text-blue-700 text-sm mb-3">
+            <p className="text-blue-200 text-sm mb-3">
               Anyone with this link can view and edit this note in real-time.
             </p>
             <div className="flex items-center space-x-2">
-              <code className="flex-1 px-3 py-2 bg-white border border-blue-200 rounded text-sm font-mono text-blue-800 truncate">
+              <code className="flex-1 px-3 py-2 bg-zinc-800/50 border border-blue-500/20 rounded text-sm font-mono text-blue-300 truncate">
                 {typeof window !== 'undefined' ? window.location.href : ''}
               </code>
               <button
                 onClick={copyToClipboard}
-                className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                className="px-3 py-2 bg-blue-600/90 text-white rounded hover:bg-blue-600 transition-all duration-200 backdrop-blur-sm border border-blue-500/20"
               >
                 <Copy className="h-4 w-4" />
               </button>
-            </div>          </div>
-          
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <div className="flex items-center space-x-2 mb-2">
-              <Code className="h-5 w-5 text-purple-600" />
-              <h3 className="font-semibold text-purple-900">Code Editor</h3>
             </div>
-            <p className="text-purple-700 text-sm mb-2">
+          </div>
+          
+          <div className="glass border border-purple-500/20 rounded-lg p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              <Code className="h-5 w-5 text-purple-400" />
+              <h3 className="font-semibold text-purple-300">Code Editor</h3>
+            </div>
+            <p className="text-purple-200 text-sm mb-2">
               Direct code editing with syntax highlighting for 20+ languages.
             </p>
-            <div className="space-y-1 text-xs text-purple-600">
+            <div className="space-y-1 text-xs text-purple-300">
               <div className="flex items-center space-x-2">
                 <Download className="h-3 w-3" />
                 <span>Download as language-specific files</span>

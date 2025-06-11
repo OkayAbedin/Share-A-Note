@@ -26,12 +26,11 @@ export default function FirebaseUsageDisplay({ className = '' }: FirebaseUsageDi
   if (process.env.NODE_ENV === 'production' || !isMounted) {
     return null;
   }
-
   const getStatusColor = (percentage: number) => {
-    if (percentage >= 90) return 'text-red-600 bg-red-50 border-red-200';
-    if (percentage >= 75) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-    if (percentage >= 50) return 'text-blue-600 bg-blue-50 border-blue-200';
-    return 'text-green-600 bg-green-50 border-green-200';
+    if (percentage >= 90) return 'text-red-400 bg-red-500/20 border-red-500/20';
+    if (percentage >= 75) return 'text-yellow-400 bg-yellow-500/20 border-yellow-500/20';
+    if (percentage >= 50) return 'text-blue-400 bg-blue-500/20 border-blue-500/20';
+    return 'text-emerald-400 bg-emerald-500/20 border-emerald-500/20';
   };
 
   const getStatusIcon = (percentage: number) => {
@@ -41,14 +40,13 @@ export default function FirebaseUsageDisplay({ className = '' }: FirebaseUsageDi
   };
 
   const recommendations = firebaseTracker.getOptimizationRecommendations();
-
   return (
     <div className={`fixed bottom-4 right-4 z-50 ${className}`}>
       {!isExpanded ? (
         // Collapsed view - just an icon
         <button
           onClick={() => setIsExpanded(true)}
-          className="flex items-center space-x-2 px-3 py-2 bg-gray-800 text-white rounded-lg shadow-lg hover:bg-gray-700 transition-colors"
+          className="flex items-center space-x-2 px-3 py-2 glass-strong text-zinc-100 rounded-lg shadow-lg hover:glass transition-all duration-200 border border-zinc-800/50"
           title="Firebase Usage Stats"
         >
           <Database className="h-4 w-4" />
@@ -58,15 +56,15 @@ export default function FirebaseUsageDisplay({ className = '' }: FirebaseUsageDi
         </button>
       ) : (
         // Expanded view - full stats
-        <div className="bg-white border border-gray-200 rounded-lg shadow-xl p-4 max-w-sm">
+        <div className="glass border border-zinc-800/50 rounded-lg shadow-xl p-4 max-w-sm">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center space-x-2">
-              <Database className="h-5 w-5 text-gray-600" />
-              <h3 className="font-semibold text-gray-900">Firebase Usage</h3>
+              <Database className="h-5 w-5 text-zinc-400" />
+              <h3 className="font-semibold text-zinc-100">Firebase Usage</h3>
             </div>
             <button
               onClick={() => setIsExpanded(false)}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-zinc-400 hover:text-zinc-300 transition-colors"
             >
               ×
             </button>
@@ -81,8 +79,7 @@ export default function FirebaseUsageDisplay({ className = '' }: FirebaseUsageDi
               </div>
               <div className="text-xs font-mono">
                 {usage.reads.count.toLocaleString()} / {usage.reads.limit.toLocaleString()}
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+              </div>              <div className="w-full bg-zinc-700/50 rounded-full h-2 mt-1">
                 <div
                   className="bg-current rounded-full h-2 transition-all duration-300"
                   style={{ width: `${Math.min(usage.reads.percentage, 100)}%` }}
@@ -101,8 +98,7 @@ export default function FirebaseUsageDisplay({ className = '' }: FirebaseUsageDi
               </div>
               <div className="text-xs font-mono">
                 {usage.writes.count.toLocaleString()} / {usage.writes.limit.toLocaleString()}
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+              </div>              <div className="w-full bg-zinc-700/50 rounded-full h-2 mt-1">
                 <div
                   className="bg-current rounded-full h-2 transition-all duration-300"
                   style={{ width: `${Math.min(usage.writes.percentage, 100)}%` }}
@@ -121,8 +117,7 @@ export default function FirebaseUsageDisplay({ className = '' }: FirebaseUsageDi
               </div>
               <div className="text-xs font-mono">
                 {usage.deletes.count.toLocaleString()} / {usage.deletes.limit.toLocaleString()}
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+              </div>              <div className="w-full bg-zinc-700/50 rounded-full h-2 mt-1">
                 <div
                   className="bg-current rounded-full h-2 transition-all duration-300"
                   style={{ width: `${Math.min(usage.deletes.percentage, 100)}%` }}
@@ -136,11 +131,11 @@ export default function FirebaseUsageDisplay({ className = '' }: FirebaseUsageDi
 
           {/* Recommendations */}
           {recommendations.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-gray-200">
-              <h4 className="font-medium text-xs text-gray-700 mb-2">💡 Optimization Tips:</h4>
+            <div className="mt-3 pt-3 border-t border-zinc-800/50">
+              <h4 className="font-medium text-xs text-zinc-300 mb-2">💡 Optimization Tips:</h4>
               <ul className="space-y-1">
                 {recommendations.slice(0, 3).map((rec, index) => (
-                  <li key={index} className="text-xs text-gray-600">
+                  <li key={index} className="text-xs text-zinc-400">
                     • {rec}
                   </li>
                 ))}
@@ -149,10 +144,10 @@ export default function FirebaseUsageDisplay({ className = '' }: FirebaseUsageDi
           )}
 
           {/* Actions */}
-          <div className="mt-3 pt-3 border-t border-gray-200 flex space-x-2">
+          <div className="mt-3 pt-3 border-t border-zinc-800/50 flex space-x-2">
             <button
               onClick={() => firebaseTracker.logDailySummary()}
-              className="flex-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+              className="flex-1 px-2 py-1 text-xs bg-blue-500/20 text-blue-300 rounded hover:bg-blue-500/30 transition-colors border border-blue-500/20"
             >
               Log Summary
             </button>
@@ -161,7 +156,7 @@ export default function FirebaseUsageDisplay({ className = '' }: FirebaseUsageDi
                 console.log('Current Firebase Usage:', usage);
                 console.log('Recommendations:', recommendations);
               }}
-              className="flex-1 px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+              className="flex-1 px-2 py-1 text-xs bg-zinc-700/50 text-zinc-300 rounded hover:bg-zinc-700 transition-colors border border-zinc-600/20"
             >
               Debug
             </button>
