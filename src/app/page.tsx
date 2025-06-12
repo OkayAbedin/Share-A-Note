@@ -16,23 +16,37 @@ export default function Home() {
     router.push(`/${noteId}`);
   };
   return (
-    <div className="min-h-screen bg-gradient-dark">
-      {/* Header */}
+    <div className="min-h-screen bg-gradient-dark">      {/* Header */}
       <header className="border-b border-zinc-800/50 glass-strong">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
               <img src="/apple-icon.svg" alt="Share-A-Note" className="h-8 w-8" />
               <h1 className="text-2xl font-bold text-zinc-100">Share-A-Note</h1>
+            </Link>
+            
+            <div className="flex items-center space-x-4">
+              <nav className="hidden md:flex items-center space-x-6">
+                <Link href="/about" className="text-zinc-300 hover:text-zinc-100 transition-colors">
+                  About
+                </Link>
+                <Link href="/privacy" className="text-zinc-300 hover:text-zinc-100 transition-colors">
+                  Privacy
+                </Link>
+                <Link href="/terms" className="text-zinc-300 hover:text-zinc-100 transition-colors">
+                  Terms
+                </Link>
+              </nav>
+              
+              <button
+                onClick={createNewNote}
+                disabled={isCreating}
+                className="inline-flex items-center px-4 py-2 bg-blue-600/90 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 backdrop-blur-sm border border-blue-500/20 disabled:opacity-50 hover:scale-105"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {isCreating ? 'Creating...' : 'New Note'}
+              </button>
             </div>
-            <button
-              onClick={createNewNote}
-              disabled={isCreating}
-              className="inline-flex items-center px-4 py-2 bg-blue-600/90 text-white rounded-lg hover:bg-blue-600 transition-all duration-200 backdrop-blur-sm border border-blue-500/20 disabled:opacity-50 hover:scale-105"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              {isCreating ? 'Creating...' : 'New Note'}
-            </button>
           </div>
         </div>
       </header>
@@ -95,32 +109,42 @@ export default function Home() {
               Start writing immediately. No accounts, no passwords, no barriers
             </p>
           </div>
-        </div>
-
-        {/* Demo URL Example */}
-        <div className="mt-16 text-center">
+        </div>        {/* Demo URL Example */}
+        <div className="mt-8 text-center">
           <p className="text-zinc-400 mb-4">Example URL:</p>
           <div className="inline-block glass px-6 py-3 rounded-lg font-mono text-zinc-300">
-            https://shareanote.vercel.app/noteno01
+            https://shareanote.vercel.app/yourcustomname
           </div>
         </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t border-zinc-800/50 glass mt-20">
+      </main>      {/* Footer */}
+      <footer className="border-t border-zinc-800/50 mt-6">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center text-zinc-400">
-            <p className="text-sm">
-              Made with <span className="text-red-400">❤️</span> by{' '}
-              <a 
-                href="https://minhazabedin.vercel.app" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 underline transition-colors"
-              >
-                Minhaz
-              </a>
-            </p>
+            <div className="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-8">
+              <nav className="flex items-center space-x-6 md:hidden">
+                <Link href="/about" className="text-zinc-400 hover:text-zinc-300 transition-colors">
+                  About
+                </Link>
+                <Link href="/privacy" className="text-zinc-400 hover:text-zinc-300 transition-colors">
+                  Privacy
+                </Link>
+                <Link href="/terms" className="text-zinc-400 hover:text-zinc-300 transition-colors">
+                  Terms
+                </Link>
+              </nav>
+              
+              <p className="text-sm">
+                Made with <span className="text-red-400">❤️</span> by{' '}
+                <a 
+                  href="https://minhazabedin.vercel.app" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:text-blue-300 underline transition-colors"
+                >
+                  Minhaz
+                </a>
+              </p>
+            </div>
           </div>
         </div>
       </footer>

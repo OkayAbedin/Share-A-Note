@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { signInAnonymously, User } from 'firebase/auth';
 import { db, auth } from '@/lib/firebase';
@@ -733,13 +734,14 @@ export default function NotePage() {
       {/* Header */}
       <header className="glass-strong border-b border-zinc-800/50 sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+          <div className="flex items-center justify-between">            <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <img src="/apple-icon.svg" alt="Share-A-Note" className="h-6 w-6" />
-                <span className="text-lg font-semibold text-zinc-100">
-                  {noteId}
-                </span>
+                <Link href="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+                  <img src="/apple-icon.svg" alt="Share-A-Note" className="h-6 w-6" />
+                  <span className="text-lg font-semibold text-zinc-100">
+                    {noteId}
+                  </span>
+                </Link>
               </div>
             </div>
 
